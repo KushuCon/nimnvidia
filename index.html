@@ -553,6 +553,16 @@ MODELS.forEach(function(m,i){
   msel.appendChild(o);
 });
 
+function isLikelyChatModel(m){
+  const nonChatTags=['embedding','tts','translation','autonomous','video'];
+  const hasNonChatTag=(m.tags||[]).some(t=>nonChatTags.includes(t));
+  const hasChatTag=(m.tags||[]).some(t=>['reasoning','coding','vision'].includes(t));
+  return hasChatTag && !hasNonChatTag;
+}
+
+const defaultModelIndex=MODELS.findIndex(isLikelyChatModel);
+if(defaultModelIndex>=0) msel.value=String(defaultModelIndex);
+
 function onMC(){
   var m=MODELS[msel.value];
   if(!m)return;
@@ -722,7 +732,14 @@ async function go(){
     var data=await res.json();
     rmTyp();
     if(!res.ok){
-      if(res.status===404){
+      const isUpstreamModel404 =
+        res.status===404 &&
+        data &&
+        (data.status===404 || /non-json/i.test(data.error||''));
+
+      if(isUpstreamModel404){
+        addSys('Selected model does not support chat endpoint. Pick a chat model (reasoning/coding) and try again.',true);
+      } else if(res.status===404){
         addSys('ERROR 404: API route missing. Deploy on Vercel (with /api/chat) or run via `vercel dev`.',true);
       } else {
         addSys('ERROR '+res.status+': '+(data.detail||data.message||JSON.stringify(data)),true);
