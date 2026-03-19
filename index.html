@@ -535,10 +535,21 @@ setMode(mode);
 
 // ── DROPDOWN ──
 var msel=document.getElementById('msel');
+const USE_ORDER=['coding','reasoning','vision','audio','video','embedding','translation','safety','autonomous','tts','math'];
+function useLabel(tags){
+  const list=Array.isArray(tags)?tags:[];
+  const ordered=[
+    ...USE_ORDER.filter(t=>list.includes(t)),
+    ...list.filter(t=>!USE_ORDER.includes(t))
+  ];
+  return ordered.slice(0,3).join('/');
+}
 MODELS.forEach(function(m,i){
   var o=document.createElement('option');
   o.value=i;
-  o.textContent='['+m.params+'] '+m.name;
+  var use=useLabel(m.tags);
+  o.textContent='['+m.params+'] '+m.name+' - '+(use||'general');
+  o.title='Best for: '+(use||'general')+'. '+m.desc;
   msel.appendChild(o);
 });
 
