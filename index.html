@@ -544,20 +544,33 @@ function useLabel(tags){
   ];
   return ordered.slice(0,3).join('/');
 }
+
+function isChatCapableModel(m){
+  const blockedTags=['embedding','tts','translation','autonomous','video','safety'];
+  const id=(m.id||'').toLowerCase();
+  const blockedIdParts=[
+    'gliner','guard','safety','embed','retriever','tts','translate',
+    'streampetr','bevformer','sparsedrive','cosmos-transfer','cosmos-predict'
+  ];
+  if((m.tags||[]).some(t=>blockedTags.includes(t))) return false;
+  if(blockedIdParts.some(p=>id.includes(p))) return false;
+  return true;
+}
+
 MODELS.forEach(function(m,i){
   var o=document.createElement('option');
   o.value=i;
   var use=useLabel(m.tags);
-  o.textContent='['+m.params+'] '+m.name+' - '+(use||'general');
-  o.title='Best for: '+(use||'general')+'. '+m.desc;
+  const chatOk=isChatCapableModel(m);
+  o.textContent='['+m.params+'] '+m.name+' - '+(use||'general')+(chatOk?'':' [NO CHAT]');
+  o.title='Best for: '+(use||'general')+'. '+m.desc+(chatOk?'':' (Not available for chat endpoint)');
+  o.disabled=!chatOk;
   msel.appendChild(o);
 });
 
 function isLikelyChatModel(m){
-  const nonChatTags=['embedding','tts','translation','autonomous','video'];
-  const hasNonChatTag=(m.tags||[]).some(t=>nonChatTags.includes(t));
   const hasChatTag=(m.tags||[]).some(t=>['reasoning','coding','vision'].includes(t));
-  return hasChatTag && !hasNonChatTag;
+  return hasChatTag && isChatCapableModel(m);
 }
 
 const defaultModelIndex=MODELS.findIndex(isLikelyChatModel);
@@ -722,6 +735,10 @@ async function go(){
   if(!txt)return;
 
   var m=MODELS[msel.value];
+  if(!isChatCapableModel(m)){
+    addSys('Selected model is task-specific and not chat-capable. Choose a model without [NO CHAT].',true);
+    return;
+  }
   ta.value='';ar(ta);
   document.getElementById('cc').textContent='0 chars';
   document.getElementById('sbtn').disabled=true;
