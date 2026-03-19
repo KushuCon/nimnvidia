@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>NIM Chat</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --g:#76b900;--g2:#4a7400;--g3:#2a4400;
+  --glow:rgba(118,185,0,0.15);--glow2:rgba(118,185,0,0.08);
+  --bg:#080a08;--bg2:#0c0f0c;--bg3:#111411;--bg4:#161916;
+  --border:#1c241c;--border2:#243424;
+  --text:#b8ccaa;--textd:#5a7050;--textdd:#3a4c3a;
+  --white:#ddeedd;--red:#cc4444;--amber:#cc8800;--r:3px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Exo 2',sans-serif;
+  display:flex;flex-direction:column;
+  position:fixed;inset:0;
+}
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.03) 3px,rgba(0,0,0,0.03) 4px);
+}
+
+/* HEADER */
+.hdr{
+  background:linear-gradient(180deg,#0a130a,#080d08);
+  border-bottom:1px solid var(--border2);
+  padding:8px 12px;
+  display:flex;align-items:center;gap:8px;
+  flex-shrink:0;min-height:52px;position:relative;
+}
+.hdr::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--g),transparent);opacity:.4;
+}
+.logo{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.logo-hex{
+  width:30px;height:30px;background:var(--g);
+  clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Share Tech Mono',monospace;font-size:8px;font-weight:bold;color:#000;
+}
+.logo-name{font-family:'Orbitron',sans-serif;font-size:13px;font-weight:700;color:var(--g);letter-spacing:2px;line-height:1}
+.logo-sub{font-family:'Share Tech Mono',monospace;font-size:7px;color:var(--textd);letter-spacing:1.5px;margin-top:1px}
+
+/* STATS PILL */
+.stats{
+  display:flex;align-items:center;gap:5px;
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--r);padding:5px 9px;
+  font-family:'Share Tech Mono',monospace;font-size:9px;
+  flex-shrink:0;margin-left:auto;
+}
+.sdot{width:5px;height:5px;border-radius:50%;background:var(--g);box-shadow:0 0 4px var(--g);animation:pls 2s infinite;flex-shrink:0}
+@keyframes pls{0%,100%{opacity:1}50%{opacity:.3}}
+.slbl{color:var(--textd);letter-spacing:.5px}
+.sval{color:var(--g);font-weight:bold}
+.sdiv{color:var(--border2);margin:0 2px}
+
+/* CONTROLS */
+.ctrl{
+  background:var(--bg2);border-bottom:1px solid var(--border);
+  padding:8px 12px;display:flex;flex-direction:column;gap:6px;flex-shrink:0;
+}
+.crow{display:flex;gap:6px;align-items:center}
+.lbl{
+  font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--textd);
+  letter-spacing:1.5px;text-transform:uppercase;white-space:nowrap;flex-shrink:0;width:32px;
+}
+
+select#msel{
+  flex:1;background:var(--bg3);color:var(--g);
+  border:1px solid var(--border2);border-radius:var(--r);
+  padding:7px 28px 7px 9px;font-family:'Share Tech Mono',monospace;font-size:10px;
+  outline:none;cursor:pointer;min-width:0;
+  -webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%234a7400'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 9px center;
+}
+select#msel:focus{border-color:var(--g);box-shadow:0 0 6px var(--glow)}
+select#msel option{background:#0a120a;color:var(--text)}
+
+.api-inp{
+  flex:1;background:var(--bg3);color:var(--text);
+  border:1px solid var(--border);border-radius:var(--r);
+  padding:7px 9px;font-family:'Share Tech Mono',monospace;font-size:10px;
+  outline:none;min-width:0;
+}
+.api-inp:focus{border-color:var(--g2)}
+.api-inp::placeholder{color:var(--textdd)}
+.api-inp:disabled{color:var(--textdd);background:var(--bg4)}
+
+.src-btn{
+  background:var(--bg4);border:1px solid var(--border2);color:var(--textd);
+  font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:1px;
+  padding:6px 9px;border-radius:var(--r);cursor:pointer;
+  transition:all .15s;flex-shrink:0;white-space:nowrap;
+}
+.src-btn.on{border-color:var(--g);color:var(--g);background:var(--glow2)}
+
+.mbadge{
+  font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--textd);
+  background:var(--bg4);border:1px solid var(--border);
+  border-radius:var(--r);padding:5px 9px;line-height:1.6;
+  display:flex;flex-wrap:wrap;gap:4px;align-items:flex-start;
+}
+.tag{
+  border-radius:2px;padding:2px 5px;font-size:8px;letter-spacing:.3px;flex-shrink:0;
+  border:1px solid var(--border2);color:var(--g2);
+}
+.tag.coding{border-color:#1a3a5a;color:#5588aa}
+.tag.reasoning{border-color:#2a2a5a;color:#8888cc}
+.tag.vision{border-color:#2a3a1a;color:#88aa44}
+.tag.audio{border-color:#3a2a1a;color:#aa8844}
+.tag.safety{border-color:#5a1a1a;color:#aa4444}
+.tag.embedding{border-color:#1a3a3a;color:#44aaaa}
+.tag.translation{border-color:#3a1a3a;color:#aa44aa}
+.tag.video{border-color:#3a2a1a;color:#cc8800}
+.tag.autonomous{border-color:#1a2a3a;color:#4488cc}
+.tag.tts{border-color:#2a3a2a;color:#66aa66}
+.tag.math{border-color:#3a3a1a;color:#aaaa44}
+
+.rate-note{
+  font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--amber);
+  background:#1a1200;border:1px solid #3a2a00;border-radius:var(--r);
+  padding:4px 9px;letter-spacing:.3px;
+}
+
+/* MESSAGES */
+#msgs{
+  flex:1;overflow-y:auto;overflow-x:hidden;
+  padding:12px;display:flex;flex-direction:column;gap:10px;
+  scrollbar-width:thin;scrollbar-color:var(--border) transparent;
+  -webkit-overflow-scrolling:touch;
+}
+#msgs::-webkit-scrollbar{width:2px}
+#msgs::-webkit-scrollbar-thumb{background:var(--border2)}
+
+.wlc{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  flex:1;gap:10px;padding:20px;text-align:center;min-height:260px;
+}
+.wnum{
+  font-family:'Orbitron',monospace;font-size:52px;font-weight:900;color:var(--g);
+  line-height:1;text-shadow:0 0 40px var(--glow);animation:flk 4s infinite;
+}
+@keyframes flk{0%,95%,100%{opacity:1}96%{opacity:.7}97%{opacity:1}98%{opacity:.5}99%{opacity:1}}
+.wtitle{font-family:'Orbitron',monospace;font-size:11px;font-weight:700;letter-spacing:4px;color:var(--g)}
+.wsub{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--textd);letter-spacing:.5px;line-height:1.9;max-width:300px}
+.chips{display:grid;grid-template-columns:1fr 1fr;gap:5px;width:100%;max-width:340px;margin-top:4px}
+.chip{
+  background:var(--bg3);border:1px solid var(--border);
+  padding:8px 9px;border-radius:var(--r);
+  font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--textd);
+  cursor:pointer;transition:all .15s;text-align:left;letter-spacing:.3px;line-height:1.4;
+}
+.chip:active{border-color:var(--g2);color:var(--text);background:var(--glow2)}
+
+.msg{display:flex;gap:7px;animation:si .22s ease;max-width:100%}
+@keyframes si{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.msg.user{align-self:flex-end;flex-direction:row-reverse;max-width:90%}
+.msg.ass{align-self:flex-start;max-width:97%}
+
+.av{
+  width:26px;height:26px;flex-shrink:0;border-radius:var(--r);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Share Tech Mono',monospace;font-size:8px;font-weight:bold;
+}
+.msg.user .av{background:var(--g3);color:var(--g);border:1px solid var(--g2)}
+.msg.ass .av{background:var(--bg3);color:var(--textd);border:1px solid var(--border)}
+
+.bbl{
+  padding:9px 12px;border-radius:var(--r);
+  line-height:1.65;font-size:13.5px;max-width:100%;word-break:break-word;
+}
+.msg.user .bbl{background:#0c1f06;border:1px solid var(--g2);color:var(--white);border-top-right-radius:0}
+.msg.ass .bbl{background:#070d07;border:1px solid var(--border);color:var(--text);border-top-left-radius:0}
+.mtag{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--textd);margin-bottom:4px;letter-spacing:.5px}
+.bbl pre{background:#0a1408;border:1px solid var(--border);padding:7px;border-radius:2px;overflow-x:auto;font-family:'Share Tech Mono',monospace;font-size:11px;color:#a0c880;margin:5px 0;white-space:pre-wrap;word-break:break-all}
+.bbl code{font-family:'Share Tech Mono',monospace;font-size:11px;background:#0e180a;padding:1px 4px;border-radius:2px;color:var(--g)}
+.bbl strong{color:var(--white)}
+.bbl p{margin:2px 0}
+
+.sysmsg{
+  align-self:center;font-family:'Share Tech Mono',monospace;font-size:8px;
+  color:var(--textd);background:var(--bg2);border:1px dashed var(--border);
+  border-radius:var(--r);padding:4px 10px;letter-spacing:.5px;text-align:center;
+  max-width:90%;word-break:break-word;
+}
+.sysmsg.err{border-color:#5a1a1a;color:#aa4444}
+
+.typ-wrap{display:flex;gap:7px;align-self:flex-start}
+.typ-bbl{
+  background:#070d07;border:1px solid var(--border);
+  border-radius:var(--r);border-top-left-radius:0;
+  padding:9px 13px;display:flex;gap:4px;align-items:center;
+}
+.dot{width:5px;height:5px;background:var(--g2);border-radius:50%;animation:bl 1.2s infinite}
+.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
+@keyframes bl{0%,80%,100%{opacity:.2}40%{opacity:1}}
+
+/* INPUT */
+.inp-wrap{
+  background:var(--bg2);border-top:1px solid var(--border2);
+  padding:9px 12px;flex-shrink:0;display:flex;flex-direction:column;gap:6px;
+}
+.inp-row{display:flex;gap:6px;align-items:flex-end}
+textarea#ti{
+  flex:1;background:var(--bg3);color:var(--white);
+  border:1px solid var(--border);border-radius:var(--r);
+  padding:9px 11px;font-family:'Exo 2',sans-serif;font-size:15px;
+  resize:none;outline:none;min-height:42px;max-height:110px;
+  line-height:1.5;transition:border-color .2s;-webkit-appearance:none;
+}
+textarea#ti:focus{border-color:var(--g2);box-shadow:0 0 5px var(--glow)}
+textarea#ti::placeholder{color:var(--textdd)}
+
+.sbtn{
+  background:#0a1f02;border:1px solid var(--g);color:var(--g);
+  font-family:'Orbitron',monospace;font-size:11px;font-weight:700;
+  letter-spacing:1px;padding:0 13px;height:42px;
+  border-radius:var(--r);cursor:pointer;flex-shrink:0;
+  transition:all .15s;box-shadow:0 0 7px var(--glow);
+}
+.sbtn:active{transform:scale(.96);background:#163300}
+.sbtn:disabled{opacity:.3;cursor:not-allowed}
+
+.tbar{display:flex;gap:5px;align-items:center}
+.tbtn{
+  background:transparent;border:1px solid var(--border);color:var(--textd);
+  font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:.5px;
+  padding:5px 9px;border-radius:var(--r);cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.tbtn:active{border-color:var(--g2);color:var(--text)}
+.tbtn.del:active{border-color:var(--red);color:var(--red)}
+.cc{margin-left:auto;font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--textdd)}
+
+/* TOAST */
+.toast{
+  position:fixed;bottom:75px;left:50%;transform:translateX(-50%);
+  background:#0d2200;border:1px solid var(--g);color:var(--g);
+  font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.5px;
+  padding:7px 14px;border-radius:var(--r);z-index:9000;
+  box-shadow:0 0 18px var(--glow);display:none;white-space:nowrap;
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="logo">
+    <div class="logo-hex">NIM</div>
+    <div>
+      <div class="logo-name">NIM CHAT</div>
+      <div class="logo-sub">NVIDIA FREE ENDPOINTS</div>
+    </div>
+  </div>
+  <div class="stats" id="statsEl">
+    <div class="sdot"></div>
+    <span class="slbl">M:</span><span class="sval" id="sM">0</span>
+    <span class="sdiv">|</span>
+    <span class="slbl">CALLS:</span><span class="sval" id="sC">0</span>
+  </div>
+</div>
+
+<!-- CONTROLS -->
+<div class="ctrl">
+  <div class="crow">
+    <span class="lbl">MODEL</span>
+    <select id="msel" onchange="onMC()"></select>
+  </div>
+  <div class="mbadge" id="mbadge"><span style="color:var(--text)">Select a model</span></div>
+  <div class="rate-note">⚡ Free: 40 req/min · API key server-side via Vercel env</div>
+</div>
+
+<!-- MESSAGES -->
+<div id="msgs">
+  <div class="wlc" id="wlc">
+    <div class="wnum" id="wnum">46</div>
+    <div class="wtitle">FREE MODELS</div>
+    <div class="wsub">Sorted: smallest → largest<br>Select model · add key · chat karo</div>
+    <div class="chips" id="initChips"></div>
+  </div>
+</div>
+
+<!-- INPUT -->
+<div class="inp-wrap">
+  <div class="inp-row">
+    <textarea id="ti" placeholder="Message karo... (Enter=send, Shift+Enter=newline)"
+      onkeydown="hk(event)" oninput="oi(this)" rows="1"></textarea>
+    <button class="sbtn" id="sbtn" onclick="go()">▶ SEND</button>
+  </div>
+  <div class="tbar">
+    <button class="tbtn" onclick="xpdf()">⬇ PDF</button>
+    <button class="tbtn del" onclick="clr()">✕ CLEAR</button>
+    <span class="cc" id="cc">0 chars</span>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+// HARDCODED KEY — fill this OR use Vercel env
+// In Vercel: add env var NVIDIA_API_KEY
+// Then in your page: <script>window.NVIDIA_API_KEY="..."<\/script>
+// ══════════════════════════════════════════
+const HARD_KEY = "";
+const SRV_KEY = (typeof window!=='undefined' && window.NVIDIA_API_KEY) || HARD_KEY;
+
+// ══════════════════════════════════════════
+// MODELS — sorted ascending by param size
+// ══════════════════════════════════════════
+const MODELS=[
+  // ── Tiny autonomous driving / perception ──
+  {id:"nvidia/streampetr",name:"StreamPETR",params:"~50M",pv:.05,
+   desc:"3D object detection for autonomous driving. Sparse temporal object queries propagated across frames.",
+   tags:["autonomous","vision"]},
+  {id:"nvidia/bevformer",name:"BEVFormer",params:"~50M",pv:.05,
+   desc:"Bird's-eye-view 3D perception transformer for self-driving. Multi-frame spatial understanding.",
+   tags:["autonomous","vision"]},
+  {id:"nvidia/sparsedrive",name:"SparseDrive",params:"~100M",pv:.1,
+   desc:"End-to-end autonomous driving: perception + prediction + planning in a single sparse model.",
+   tags:["autonomous"]},
+
+  // ── Embedding / RAG ──
+  {id:"nvidia/llama-3_2-nemoretriever-300m-embed-v1",name:"NemoRetriever 300M Embed",params:"300M",pv:.3,
+   desc:"Multilingual cross-lingual text embedding for RAG. 26 languages, long-document QA retrieval.",
+   tags:["embedding"]},
+
+  // ── ~0.4B ──
+  {id:"nvidia/gliner-pii",name:"GLiNER PII",params:"~0.4B",pv:.4,
+   desc:"Detects PII in text: names, emails, phone numbers, addresses. Privacy & compliance tool.",
+   tags:["safety","reasoning"]},
+
+  // ── ~1B TTS ──
+  {id:"nvidia/magpie-tts-flow",name:"Magpie TTS Flow",params:"~1B",pv:1,
+   desc:"Expressive text-to-speech from a short audio sample. Voice cloning for voice agents.",
+   tags:["tts","audio"]},
+  {id:"nvidia/magpie-tts-zeroshot",name:"Magpie TTS Zero-Shot",params:"~1B",pv:1,
+   desc:"Zero-shot TTS — natural speech from any text, no per-speaker training required.",
+   tags:["tts","audio"]},
+
+  // ── ~2B ──
+  {id:"google/gemma-3n-e2b-it",name:"Gemma 3N E2B",params:"~2B eff.",pv:2,
+   desc:"Ultra-lightweight Google edge AI. Accepts text + audio + image. Resource-constrained devices.",
+   tags:["vision","audio","reasoning"]},
+  {id:"nvidia/cosmos-transfer2.5-2b",name:"Cosmos Transfer 2.5",params:"2B",pv:2,
+   desc:"Physics-aware video world state generation using text prompts + multiple spatial control inputs.",
+   tags:["video","autonomous"]},
+
+  // ── ~3-4B ──
+  {id:"microsoft/phi-4-mini-flash-reasoning",name:"Phi-4 Mini Flash",params:"~3.8B",pv:3.8,
+   desc:"Microsoft's lightweight reasoning model: math, logic, code. Designed for low-latency edge devices.",
+   tags:["reasoning","math","coding"]},
+  {id:"nvidia/riva-translate-4b-instruct-v1_1",name:"Riva Translate 4B",params:"4B",pv:4,
+   desc:"Neural machine translation across 12 languages with few-shot prompt support. High accuracy NMT.",
+   tags:["translation"]},
+  {id:"nvidia/nemotron-content-safety-reasoning-4b",name:"Nemotron Safety 4B",params:"4B",pv:4,
+   desc:"Safety model with chain-of-thought reasoning. Enforces domain-specific content policies.",
+   tags:["safety","reasoning"]},
+  {id:"google/gemma-3n-e4b-it",name:"Gemma 3N E4B",params:"~4B eff.",pv:4,
+   desc:"Google edge AI: text + audio + image input. Stronger than E2B while staying lightweight.",
+   tags:["vision","audio","reasoning"]},
+
+  // ── ~5B ──
+  {id:"microsoft/phi-4-multimodal-instruct",name:"Phi-4 Multimodal",params:"~5B",pv:5,
+   desc:"Microsoft open multimodal: high-quality reasoning from BOTH images and audio. Edge-capable.",
+   tags:["vision","audio","reasoning"]},
+  {id:"nvidia/cosmos-predict1-5b",name:"Cosmos Predict 1",params:"5B",pv:5,
+   desc:"Predicts future physics-aware video frames from image/short video. Physical AI simulation.",
+   tags:["video","autonomous"]},
+
+  // ── 7B ──
+  {id:"nvidia/nv-embedcode-7b-v1",name:"NV-EmbedCode 7B",params:"7B",pv:7,
+   desc:"Mistral-based code embedding model. Text, code, and hybrid query retrieval for code RAG.",
+   tags:["embedding","coding"]},
+  {id:"nvidia/cosmos-reason1-7b",name:"Cosmos Reason 1 (7B)",params:"7B",pv:7,
+   desc:"Reasoning VLM for physical AI and robotics. Understands physics and causality from video/images.",
+   tags:["reasoning","vision","autonomous"]},
+  {id:"nvidia/cosmos-transfer1-7b",name:"Cosmos Transfer 1 (7B)",params:"7B",pv:7,
+   desc:"Physics-aware video world state generation from text + spatial controls. Physical AI / sim.",
+   tags:["video","autonomous"]},
+
+  // ── 8B ──
+  {id:"ibm/granite-3.3-8b-instruct",name:"Granite 3.3 8B",params:"8B",pv:8,
+   desc:"IBM compact LM: reasoning, coding, instruction-following for enterprise. Efficient and reliable.",
+   tags:["coding","reasoning"]},
+  {id:"Marin/marin-8b-instruct",name:"Marin 8B",params:"8B",pv:8,
+   desc:"Open model trained on open datasets. Strong reasoning, math, science. Fully transparent.",
+   tags:["reasoning","math"]},
+  {id:"nvidia/llama-3.1-nemotron-safety-guard-8b-v3",name:"Nemotron Safety Guard 8B",params:"8B",pv:8,
+   desc:"Multilingual content safety & moderation. Filters harmful content for any LLM pipeline.",
+   tags:["safety"]},
+
+  // ── 11-12B ──
+  {id:"Speakleash/bielik-11b-v2.6-instruct",name:"Bielik 11B (Polish)",params:"11B",pv:11,
+   desc:"State-of-the-art Polish language model. Text generation, Q&A, chatbots in Polish language.",
+   tags:["reasoning"]},
+  {id:"meta/llama-guard-4-12b",name:"Llama Guard 4 12B",params:"12B",pv:12,
+   desc:"Meta's multi-modal safety classifier. Checks input prompts AND output responses for harmful content.",
+   tags:["safety","vision"]},
+
+  // ── 17B×16 MoE ──
+  {id:"meta/llama-4-scout-17b-16e-instruct",name:"Llama 4 Scout 17B×16E",params:"17B×16 MoE",pv:17*16,
+   desc:"Meta's multimodal, multilingual 16-expert MoE. Fast and efficient for diverse tasks.",
+   tags:["vision","reasoning"]},
+
+  // ── 24B ──
+  {id:"mistralai/magistral-small-2506",name:"Magistral Small 2506",params:"~24B",pv:24,
+   desc:"High-performance reasoning model optimized for efficiency and edge deployment. Coding + math.",
+   tags:["reasoning","coding","math"]},
+  {id:"mistralai/mistral-small-3.1-24b-instruct-2503",name:"Mistral Small 3.1 24B",params:"24B",pv:24,
+   desc:"Efficient multimodal — multilingual, image understanding, fast responses for diverse tasks.",
+   tags:["vision","reasoning"]},
+
+  // ── 27B ──
+  {id:"google/gemma-3-27b-it",name:"Gemma 3 27B",params:"27B",pv:27,
+   desc:"Google's cutting-edge open multimodal. High-quality reasoning from images, multilingual text.",
+   tags:["vision","reasoning"]},
+
+  // ── 32B ──
+  {id:"qwen/qwq-32b",name:"QwQ 32B",params:"32B",pv:32,
+   desc:"Powerful thinking model for hard problems: math olympiad, competitive coding, multi-step logic.",
+   tags:["reasoning","math","coding"]},
+
+  // ── 36B ──
+  {id:"bytedance/seed-oss-36b-instruct",name:"Seed OSS 36B",params:"36B",pv:36,
+   desc:"ByteDance open LLM with long-context understanding, reasoning, and agentic intelligence.",
+   tags:["reasoning","coding"]},
+
+  // ── ~70B ──
+  {id:"z-ai/glm-4.7",name:"GLM-4.7",params:"~70B",pv:70,
+   desc:"Multilingual agentic coding partner by Z.ai. Stronger reasoning, tool use, UI agent skills.",
+   tags:["coding","reasoning"]},
+
+  // ── 17B×128 MoE ──
+  {id:"meta/llama-4-maverick-17b-128e-instruct",name:"Llama 4 Maverick 17B×128E",params:"17B×128 MoE",pv:17*128,
+   desc:"Meta's powerful multimodal, multilingual 128-expert MoE. Vision + language at scale.",
+   tags:["vision","reasoning"]},
+
+  // ── 120B MoE ──
+  {id:"nvidia/nemotron-3-super-120b-a12b",name:"Nemotron 3 Super 120B",params:"120B MoE (12B active)",pv:120,
+   desc:"Hybrid Mamba-Transformer MoE. 1M token context. Agentic reasoning, coding, planning, tool calling.",
+   tags:["reasoning","coding","math"]},
+  {id:"mistralai/mistral-nemotron",name:"Mistral Nemotron ~120B",params:"~120B MoE",pv:120,
+   desc:"Built for agentic workflows: coding, instruction following, function calling, tool use.",
+   tags:["coding","reasoning"]},
+
+  // ── 122B MoE ──
+  {id:"qwen/qwen3.5-122b-a10b",name:"Qwen 3.5 122B",params:"122B MoE (10B active)",pv:122,
+   desc:"MoE LLM for coding, reasoning, multimodal chat. Agent-ready with tool calling support.",
+   tags:["reasoning","coding"]},
+
+  // ── 123B ──
+  {id:"mistralai/devstral-2-123b-instruct-2512",name:"Devstral 2 123B",params:"123B MoE",pv:123,
+   desc:"State-of-the-art open code model. Deep reasoning, 256K context, top coding benchmarks.",
+   tags:["coding","reasoning","math"]},
+  {id:"mistralai/mistral-medium-3-instruct",name:"Mistral Medium 3",params:"~123B",pv:123,
+   desc:"Powerful multimodal for enterprise: software dev, data analysis, complex reasoning tasks.",
+   tags:["vision","reasoning","coding"]},
+
+  // ── ~200B ──
+  {id:"Stepfun-ai/step-3.5-flash",name:"Step 3.5 Flash 200B",params:"200B MoE",pv:200,
+   desc:"Open-source reasoning engine, sparse MoE, frontier agentic AI for complex multi-step tasks.",
+   tags:["reasoning","coding"]},
+
+  // ── ~456B ──
+  {id:"minimaxai/minimax-m2.1",name:"MiniMax M2.1",params:"~456B MoE",pv:456,
+   desc:"Multi-language coding, app/web dev, office AI tasks, seamless agent integration.",
+   tags:["coding","reasoning"]},
+
+  // ── ~480B MoE ──
+  {id:"qwen/qwen3-coder-480b-a35b-instruct",name:"Qwen3 Coder 480B",params:"480B MoE (35B active)",pv:480,
+   desc:"Best-in-class agentic coding, browser use, 256K context. Top-ranked on coding + reasoning.",
+   tags:["coding","reasoning","math"]},
+
+  // ── ~675B MoE ──
+  {id:"mistralai/mistral-large-3-675b-instruct-2512",name:"Mistral Large 3 675B",params:"675B MoE",pv:675,
+   desc:"Top-tier general purpose VLM: chat, agentic, instruction following, multimodal at scale.",
+   tags:["vision","reasoning","coding"]},
+  {id:"deepseek-ai/deepseek-v3.1",name:"DeepSeek V3.1",params:"685B MoE",pv:685,
+   desc:"Fast hybrid reasoning, 128K context, strong tool use and function calling. Agentic tasks.",
+   tags:["reasoning","coding"]},
+  {id:"deepseek-ai/deepseek-v3.1-terminus",name:"DeepSeek V3.1 Terminus",params:"685B MoE",pv:685,
+   desc:"Think/Non-Think modes, stronger agents, 128K context, strict function calling support.",
+   tags:["reasoning","coding"]},
+  {id:"deepseek-ai/deepseek-v3.2",name:"DeepSeek V3.2",params:"685B MoE",pv:685,
+   desc:"SOTA reasoning LLM: sparse attention, very long context, integrated agentic tools.",
+   tags:["reasoning","coding","math"]},
+
+  // ── ~1T MoE ──
+  {id:"moonshotai/kimi-k2-thinking",name:"Kimi K2 Thinking ~1T",params:"~1T MoE",pv:1000,
+   desc:"Open reasoning model with 'thinking' mode. 256K context, INT4 quantization, enhanced tool use.",
+   tags:["reasoning","coding","math"]},
+  {id:"moonshotai/kimi-k2-instruct",name:"Kimi K2 Instruct ~1T",params:"~1T MoE",pv:1000,
+   desc:"SOTA open MoE model. Best-in-class reasoning, coding, and agentic capabilities.",
+   tags:["coding","reasoning"]},
+  {id:"moonshotai/kimi-k2-instruct-0905",name:"Kimi K2 Instruct 0905 ~1T",params:"~1T MoE",pv:1000,
+   desc:"Updated Kimi K2: extended context window, enhanced reasoning and tool calling performance.",
+   tags:["reasoning","coding"]},
+];
+
+// sort ascending
+MODELS.sort((a,b)=>a.pv-b.pv);
+
+// ── API MODE ──
+let mode = SRV_KEY ? 'env' : 'manual';
+function setMode(m){
+  mode=m;
+  document.getElementById('btnEnv').classList.toggle('on',m==='env');
+  document.getElementById('btnMan').classList.toggle('on',m==='manual');
+  const ki=document.getElementById('apiK');
+  ki.disabled=(m==='env');
+  ki.placeholder = m==='env'
+    ? (SRV_KEY?'Using server/env key ✓':'No server key — switch MANUAL')
+    : 'nvapi-xxxxxxxxxxxx';
+}
+setMode(mode);
+
+// ── DROPDOWN ──
+var msel=document.getElementById('msel');
+MODELS.forEach(function(m,i){
+  var o=document.createElement('option');
+  o.value=i;
+  o.textContent='['+m.params+'] '+m.name;
+  msel.appendChild(o);
+});
+
+function onMC(){
+  var m=MODELS[msel.value];
+  if(!m)return;
+  var badge=document.getElementById('mbadge');
+  badge.innerHTML='';
+  var span=document.createElement('span');
+  span.style.cssText='color:var(--text);flex:1;font-size:9px';
+  span.textContent=m.desc;
+  badge.appendChild(span);
+  m.tags.forEach(function(t){
+    var tg=document.createElement('span');
+    tg.className='tag '+t;
+    tg.textContent=t;
+    badge.appendChild(tg);
+  });
+}
+onMC();
+
+// ══════════════════════════════════════════
+// ALL-TIME CALL TRACKER (localStorage)
+// Survives refresh — stores per-model counts
+// ══════════════════════════════════════════
+function ldStats(){
+  try{return JSON.parse(localStorage.getItem('nimStats'))||{total:0,models:{}}}
+  catch(e){return{total:0,models:{}}}
+}
+function svStats(s){try{localStorage.setItem('nimStats',JSON.stringify(s))}catch(e){}}
+function recCall(id){
+  const s=ldStats();
+  s.total=(s.total||0)+1;
+  s.models[id]=(s.models[id]||0)+1;
+  svStats(s);
+  rnStats();
+}
+function rnStats(){
+  const s=ldStats();
+  document.getElementById('sM').textContent=Object.keys(s.models).length;
+  document.getElementById('sC').textContent=s.total;
+  document.getElementById('wnum').textContent=MODELS.length;
+}
+rnStats();
+
+// Init welcome chips
+(function(){
+  var initC=document.getElementById('initChips');
+  if(!initC)return;
+  var prompts=[
+    ['💻 Code help','Python mein quicksort explain karo with code'],
+    ['🧠 AI concepts','Machine learning kya hai, simple mein batao'],
+    ['✍️ Creative','Ek chhoti sci-fi story Hindi mein likho'],
+    ['🗃️ Database','SQL LEFT JOIN vs INNER JOIN batao'],
+    ['🔍 Model info','Ye model kya kya kar sakta hai?'],
+    ['⚛️ React','React hooks kya hote hain, examples ke saath']
+  ];
+  prompts.forEach(function(p){
+    var ch=document.createElement('div');
+    ch.className='chip';ch.textContent=p[0];
+    ch.setAttribute('data-p',p[1]);
+    ch.onclick=function(){setP(this.getAttribute('data-p'));};
+    initC.appendChild(ch);
+  });
+})();
+
+// ── HISTORY ──
+let hist=[],msgN=0;
+
+function hwlc(){var w=document.getElementById('wlc');if(w)w.remove();}
+
+function addMsg(role,content,mn){
+  hwlc();
+  var c=document.getElementById('msgs');
+  var d=document.createElement('div');
+  d.className='msg '+role;
+  var av=document.createElement('div');
+  av.className='av';
+  av.textContent=(role==='user')?'YOU':'AI';
+  var bbl=document.createElement('div');
+  bbl.className='bbl';
+  if(role==='ass'&&mn){
+    var tg=document.createElement('div');
+    tg.className='mtag';
+    tg.textContent='▸ '+mn;
+    bbl.appendChild(tg);
+  }
+  var inner=document.createElement('div');
+  inner.innerHTML=fmt(content);
+  bbl.appendChild(inner);
+  d.appendChild(av);
+  d.appendChild(bbl);
+  c.appendChild(d);
+  sc();msgN++;
+}
+
+function fmt(t){
+  t=t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  t=t.replace(/```([\s\S]*?)```/g,'<pre><code>$1</code></pre>');
+  t=t.replace(/`([^`]+)`/g,'<code>$1</code>');
+  t=t.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+  t=t.replace(/\*(.*?)\*/g,'<em>$1</em>');
+  t=t.replace(/\n/g,'<br>');
+  return t;
+}
+
+function addTyp(){
+  hwlc();
+  var c=document.getElementById('msgs');
+  var wrap=document.createElement('div');
+  wrap.className='typ-wrap';
+  wrap.id='typEl';
+  var av=document.createElement('div');
+  av.className='av';
+  av.textContent='AI';
+  av.style.cssText='background:var(--bg3);border:1px solid var(--border);color:var(--textd);width:26px;height:26px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:8px;flex-shrink:0';
+  var bbl=document.createElement('div');
+  bbl.className='typ-bbl';
+  for(var i=0;i<3;i++){var dot=document.createElement('div');dot.className='dot';bbl.appendChild(dot);}
+  wrap.appendChild(av);wrap.appendChild(bbl);
+  c.appendChild(wrap);sc();
+}
+function rmTyp(){var t=document.getElementById('typEl');if(t)t.remove();}
+
+function addSys(txt,err){
+  var c=document.getElementById('msgs');
+  var d=document.createElement('div');
+  d.className='sysmsg'+(err?' err':'');
+  d.textContent=txt;
+  c.appendChild(d);sc();
+}
+
+// ── SEND ──
+async function go(){
+  var ta=document.getElementById('ti');
+  var txt=ta.value.trim();
+  if(!txt)return;
+
+  var m=MODELS[msel.value];
+  ta.value='';ar(ta);
+  document.getElementById('cc').textContent='0 chars';
+  document.getElementById('sbtn').disabled=true;
+
+  addMsg('user',txt,null);
+  hist.push({role:'user',content:txt});
+  addTyp();
+
+  try{
+    var res=await fetch('/api/chat',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:m.id,messages:hist,max_tokens:1024,temperature:0.7,stream:false})
+    });
+    var data=await res.json();
+    rmTyp();
+    if(!res.ok){
+      addSys('ERROR '+res.status+': '+(data.detail||data.message||JSON.stringify(data)),true);
+    } else {
+      var reply=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'(empty)';
+      hist.push({role:'assistant',content:reply});
+      addMsg('ass',reply,m.name);
+      recCall(m.id);
+    }
+  }catch(e){
+    rmTyp();addSys('NETWORK ERROR: '+e.message,true);
+  }
+  document.getElementById('sbtn').disabled=false;
+  ta.focus();
+}
+
+// ── PDF EXPORT ──
+function xpdf(){
+  var allM=document.querySelectorAll('.msg');
+  if(!allM.length){toast('Koi message nahi!');return;}
+  var m=MODELS[msel.value];
+  var date=new Date().toLocaleString('en-IN');
+  var s=ldStats();
+  var usedCount=Object.keys(s.models).length;
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>NIM Chat Export</title>';
+  html+='<style>body{font-family:monospace;background:#fff;color:#111;padding:22px;max-width:760px;margin:auto;font-size:12px}';
+  html+='h1{color:#333;border-bottom:3px solid #76b900;padding-bottom:7px}';
+  html+='.meta{color:#666;font-size:10px;margin:7px 0 18px;line-height:1.9}';
+  html+='.msg{margin:10px 0;padding:9px 13px;border-radius:3px}';
+  html+='.user{background:#f0f8e6;border-left:4px solid #76b900}';
+  html+='.ass{background:#f5f5f5;border-left:4px solid #999}';
+  html+='.role{font-weight:bold;font-size:9px;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px}';
+  html+='.user .role{color:#4a7400}.ass .role{color:#555}';
+  html+='pre{background:#eee;padding:7px;border-radius:2px;overflow-x:auto;font-size:10px;white-space:pre-wrap}';
+  html+='code{background:#e8e8e8;padding:1px 3px;border-radius:2px}';
+  html+='@media print{body{padding:8px}}</style></head><body>';
+  html+='<h1>NIM Chat Export</h1>';
+  html+='<div class="meta">Model: '+m.name+' ['+m.params+']<br>';
+  html+='Exported: '+date+' | Session: '+msgN+' msgs | All-time calls: '+s.total+' | Models used: '+usedCount+'</div>';
+  allM.forEach(function(el){
+    var role=el.classList.contains('user')?'user':'ass';
+    var inner=el.querySelector('.bbl > div');
+    var cnt=inner?inner.innerHTML:'';
+    var lbl=role==='user'?'You':m.name;
+    html+='<div class="msg '+role+'"><div class="role">'+lbl+'</div><div>'+cnt+'</div></div>';
+  });
+  html+='</body></html>';
+  var w=window.open('','_blank');
+  if(w){w.document.write(html);w.document.close();setTimeout(function(){w.print();},600);}
+  else{
+    var b=new Blob([html],{type:'text/html'});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(b);
+    a.download='nim-chat-'+Date.now()+'.html';
+    a.click();
+  }
+  toast('Print dialog mein Save as PDF select karo');
+}
+
+// ── CLEAR ──
+function buildWelcome(){
+  var wlc=document.createElement('div');
+  wlc.className='wlc';wlc.id='wlc';
+  var wnum=document.createElement('div');wnum.className='wnum';wnum.textContent=MODELS.length;
+  var wtitle=document.createElement('div');wtitle.className='wtitle';wtitle.textContent='FREE MODELS';
+  var wsub=document.createElement('div');wsub.className='wsub';wsub.textContent='Chat cleared. Fresh start!';
+  var chips=document.createElement('div');chips.className='chips';
+  var prompts=[
+    ['💻 Code help','Python mein quicksort explain karo with code'],
+    ['🧠 AI concepts','Machine learning kya hai, simple mein batao'],
+    ['✍️ Creative','Ek chhoti sci-fi story Hindi mein likho'],
+    ['🗃️ Database','SQL LEFT JOIN vs INNER JOIN batao'],
+    ['🔍 Model info','Ye model kya kya kar sakta hai?'],
+    ['⚛️ React','React hooks kya hote hain, examples ke saath']
+  ];
+  prompts.forEach(function(p){
+    var ch=document.createElement('div');
+    ch.className='chip';ch.textContent=p[0];
+    ch.setAttribute('data-prompt',p[1]);
+    ch.onclick=function(){setP(this.getAttribute('data-prompt'));};
+    chips.appendChild(ch);
+  });
+  wlc.appendChild(wnum);wlc.appendChild(wtitle);wlc.appendChild(wsub);wlc.appendChild(chips);
+  return wlc;
+}
+
+function clr(){
+  hist=[];msgN=0;
+  var c=document.getElementById('msgs');
+  c.innerHTML='';
+  c.appendChild(buildWelcome());
+  rnStats();
+}
+
+// ── HELPERS ──
+function setP(t){
+  document.getElementById('ti').value=t;
+  document.getElementById('ti').focus();
+  ar(document.getElementById('ti'));
+}
+function hk(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();go();}}
+function oi(el){ar(el);document.getElementById('cc').textContent=el.value.length+' chars';}
+function ar(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,110)+'px';}
+function sc(){var c=document.getElementById('msgs');c.scrollTop=c.scrollHeight;}
+function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(function(){t.style.display='none';},3000);}
+</script>
+</body>
+</html>
