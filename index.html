@@ -683,6 +683,25 @@ function addSys(txt,err){
 }
 
 // ── SEND ──
+async function postChat(payload){
+  let res=await fetch('/api/chat',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload)
+  });
+
+  // Fallback for hosts that expose the function as /api/chat.js
+  if(res.status===404){
+    res=await fetch('/api/chat.js',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+  }
+
+  return res;
+}
+
 async function go(){
   var ta=document.getElementById('ti');
   var txt=ta.value.trim();
@@ -698,15 +717,16 @@ async function go(){
   addTyp();
 
   try{
-    var res=await fetch('/api/chat',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:m.id,messages:hist,max_tokens:1024,temperature:0.7,stream:false})
-    });
+    var payload={model:m.id,messages:hist,max_tokens:1024,temperature:0.7,stream:false};
+    var res=await postChat(payload);
     var data=await res.json();
     rmTyp();
     if(!res.ok){
-      addSys('ERROR '+res.status+': '+(data.detail||data.message||JSON.stringify(data)),true);
+      if(res.status===404){
+        addSys('ERROR 404: API route missing. Deploy on Vercel (with /api/chat) or run via `vercel dev`.',true);
+      } else {
+        addSys('ERROR '+res.status+': '+(data.detail||data.message||JSON.stringify(data)),true);
+      }
     } else {
       var reply=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'(empty)';
       hist.push({role:'assistant',content:reply});

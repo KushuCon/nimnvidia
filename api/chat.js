@@ -11,17 +11,27 @@ export default async function handler(req, res) {
   }
 
   try {
+    const payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + apiKey,
       },
-      body: JSON.stringify(req.body),
+      body: JSON.stringify(payload),
     });
 
-    const data = await response.json();
-    return res.status(response.status).json(data);
+    const raw = await response.text();
+    try {
+      const data = JSON.parse(raw);
+      return res.status(response.status).json(data);
+    } catch (_) {
+      return res.status(response.status).json({
+        error: 'Upstream returned non-JSON response',
+        status: response.status,
+        body: raw.slice(0, 1200),
+      });
+    }
   } catch (err) {
     return res.status(500).json({ error: 'Proxy error: ' + err.message });
   }
