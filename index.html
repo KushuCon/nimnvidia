@@ -15,12 +15,14 @@
   --white:#ddeedd;--red:#cc4444;--amber:#cc8800;--r:3px;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;overflow:hidden}
+html,body{height:100%;overflow-x:hidden}
 body{
   background:var(--bg);color:var(--text);
   font-family:'Exo 2',sans-serif;
   display:flex;flex-direction:column;
-  position:fixed;inset:0;
+  min-height:100vh;
+  min-height:100dvh;
+  overflow-y:auto;
 }
 body::after{
   content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
@@ -216,7 +218,7 @@ textarea#ti{
   border:1px solid var(--border);border-radius:var(--r);
   padding:9px 11px;font-family:'Exo 2',sans-serif;font-size:15px;
   resize:none;outline:none;min-height:42px;max-height:110px;
-  line-height:1.5;transition:border-color .2s;-webkit-appearance:none;
+  line-height:1.5;transition:border-color .2s;appearance:none;-webkit-appearance:none;
 }
 textarea#ti:focus{border-color:var(--g2);box-shadow:0 0 5px var(--glow)}
 textarea#ti::placeholder{color:var(--textdd)}
@@ -515,13 +517,19 @@ MODELS.sort((a,b)=>a.pv-b.pv);
 let mode = SRV_KEY ? 'env' : 'manual';
 function setMode(m){
   mode=m;
-  document.getElementById('btnEnv').classList.toggle('on',m==='env');
-  document.getElementById('btnMan').classList.toggle('on',m==='manual');
+  const btnEnv=document.getElementById('btnEnv');
+  const btnMan=document.getElementById('btnMan');
   const ki=document.getElementById('apiK');
-  ki.disabled=(m==='env');
-  ki.placeholder = m==='env'
-    ? (SRV_KEY?'Using server/env key ✓':'No server key — switch MANUAL')
-    : 'nvapi-xxxxxxxxxxxx';
+
+  if(btnEnv) btnEnv.classList.toggle('on',m==='env');
+  if(btnMan) btnMan.classList.toggle('on',m==='manual');
+
+  if(ki){
+    ki.disabled=(m==='env');
+    ki.placeholder = m==='env'
+      ? (SRV_KEY?'Using server/env key ✓':'No server key - switch MANUAL')
+      : 'nvapi-xxxxxxxxxxxx';
+  }
 }
 setMode(mode);
 
