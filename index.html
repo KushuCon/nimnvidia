@@ -599,9 +599,12 @@ function recCall(id){
 }
 function rnStats(){
   const s=ldStats();
-  document.getElementById('sM').textContent=Object.keys(s.models).length;
-  document.getElementById('sC').textContent=s.total;
-  document.getElementById('wnum').textContent=MODELS.length;
+  const sM=document.getElementById('sM');
+  const sC=document.getElementById('sC');
+  const wnum=document.getElementById('wnum');
+  if(sM) sM.textContent=Object.keys(s.models).length;
+  if(sC) sC.textContent=s.total;
+  if(wnum) wnum.textContent=MODELS.length;
 }
 rnStats();
 
@@ -636,6 +639,7 @@ function addMsg(role,content,mn){
   var c=document.getElementById('msgs');
   var d=document.createElement('div');
   d.className='msg '+role;
+  d.setAttribute('data-ts',new Date().toLocaleString('en-IN'));
   var av=document.createElement('div');
   av.className='av';
   av.textContent=(role==='user')?'YOU':'AI';
@@ -773,6 +777,7 @@ function xpdf(){
   html+='.user{background:#f0f8e6;border-left:4px solid #76b900}';
   html+='.ass{background:#f5f5f5;border-left:4px solid #999}';
   html+='.role{font-weight:bold;font-size:9px;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px}';
+  html+='.stamp{color:#777;font-size:9px;margin:0 0 6px;letter-spacing:.2px}';
   html+='.user .role{color:#4a7400}.ass .role{color:#555}';
   html+='pre{background:#eee;padding:7px;border-radius:2px;overflow-x:auto;font-size:10px;white-space:pre-wrap}';
   html+='code{background:#e8e8e8;padding:1px 3px;border-radius:2px}';
@@ -780,12 +785,13 @@ function xpdf(){
   html+='<h1>NIM Chat Export</h1>';
   html+='<div class="meta">Model: '+m.name+' ['+m.params+']<br>';
   html+='Exported: '+date+' | Session: '+msgN+' msgs | All-time calls: '+s.total+' | Models used: '+usedCount+'</div>';
-  allM.forEach(function(el){
+  allM.forEach(function(el,idx){
     var role=el.classList.contains('user')?'user':'ass';
-    var inner=el.querySelector('.bbl > div');
+    var inner=el.querySelector('.bbl > div:last-child');
     var cnt=inner?inner.innerHTML:'';
     var lbl=role==='user'?'You':m.name;
-    html+='<div class="msg '+role+'"><div class="role">'+lbl+'</div><div>'+cnt+'</div></div>';
+    var ts=el.getAttribute('data-ts')||date;
+    html+='<div class="msg '+role+'"><div class="role">'+lbl+'</div><div class="stamp">#'+(idx+1)+' · '+ts+'</div><div>'+cnt+'</div></div>';
   });
   html+='</body></html>';
   var w=window.open('','_blank');
