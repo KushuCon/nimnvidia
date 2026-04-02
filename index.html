@@ -134,6 +134,27 @@ select#msel option{background:#0a120a;color:var(--text)}
   padding:4px 9px;letter-spacing:.3px;
 }
 
+.auth-box{
+  border:1px solid var(--border);background:var(--bg4);border-radius:var(--r);
+  padding:7px;display:flex;flex-direction:column;gap:6px;
+}
+.auth-row{display:flex;gap:6px;align-items:center}
+.auth-inp{
+  flex:1;background:var(--bg3);color:var(--text);
+  border:1px solid var(--border);border-radius:var(--r);
+  padding:7px 9px;font-family:'Share Tech Mono',monospace;font-size:10px;
+  outline:none;min-width:0;
+}
+.auth-inp:focus{border-color:var(--g2)}
+.auth-btn{
+  background:#0e180a;border:1px solid var(--border2);color:var(--text);
+  font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.6px;
+  padding:7px 10px;border-radius:var(--r);cursor:pointer;white-space:nowrap;
+}
+.auth-btn.ok{border-color:var(--g2);color:var(--g)}
+.auth-note{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--textd);letter-spacing:.4px}
+.auth-note.err{color:#aa4444}
+
 /* MESSAGES */
 #msgs{
   flex:1;overflow-y:auto;overflow-x:hidden;
@@ -278,7 +299,24 @@ textarea#ti::placeholder{color:var(--textdd)}
     <span class="lbl">MODEL</span>
     <select id="msel" onchange="onMC()"></select>
   </div>
+  <div class="crow" id="chatRow" style="display:none">
+    <span class="lbl">CHAT</span>
+    <select id="csel" onchange="onChatChange()"></select>
+    <button class="tbtn" type="button" onclick="newChat()">+ NEW</button>
+  </div>
   <div class="mbadge" id="mbadge"><span style="color:var(--text)">Select a model</span></div>
+  <div class="auth-box" id="authBox">
+    <div class="auth-row">
+      <input id="uName" class="auth-inp" type="text" autocomplete="username" placeholder="username">
+      <input id="uPass" class="auth-inp" type="password" autocomplete="current-password" placeholder="password">
+    </div>
+    <div class="auth-row">
+      <button class="auth-btn ok" type="button" onclick="authSubmit('login')">LOGIN</button>
+      <button class="auth-btn" type="button" onclick="authSubmit('signup')">SIGNUP</button>
+      <button class="auth-btn" type="button" onclick="authLogout()" id="logoutBtn" style="display:none">LOGOUT</button>
+    </div>
+    <div class="auth-note" id="authNote">Login/signup to save chats for 30 days.</div>
+  </div>
   <div class="rate-note">⚡ Free: 40 req/min · API key server-side via Vercel env</div>
 </div>
 
@@ -594,6 +632,198 @@ function onMC(){
 }
 onMC();
 
+const MODEL_BY_ID=Object.fromEntries(MODELS.map(m=>[m.id,m]));
+let authUser=null;
+let activeConversationId=null;
+let convList=[];
+
+function setAuthNote(msg,isErr){
+  var el=document.getElementById('authNote');
+  if(!el)return;
+  el.textContent=msg;
+  el.className='auth-note'+(isErr?' err':'');
+}
+
+function setAuthUI(){
+  var logged=!!authUser;
+  var userIn=document.getElementById('uName');
+  var passIn=document.getElementById('uPass');
+  var logoutBtn=document.getElementById('logoutBtn');
+  var chatRow=document.getElementById('chatRow');
+  var ta=document.getElementById('ti');
+  var sbtn=document.getElementById('sbtn');
+
+  if(userIn) userIn.disabled=logged;
+  if(passIn) passIn.disabled=logged;
+  if(logoutBtn) logoutBtn.style.display=logged?'inline-block':'none';
+  if(chatRow) chatRow.style.display=logged?'flex':'none';
+  if(ta) ta.disabled=!logged;
+  if(sbtn) sbtn.disabled=!logged;
+
+  if(logged){
+    setAuthNote('Logged in as @'+authUser.username+' · Session: 30 days',false);
+  }else{
+    setAuthNote('Login/signup to save chats for 30 days.',false);
+  }
+}
+
+async function apiJSON(url,opts){
+  var o=opts||{};
+  var h=o.headers||{};
+  var res=await fetch(url,{
+    method:o.method||'GET',
+    headers:Object.assign({'Content-Type':'application/json'},h),
+    body:o.body?JSON.stringify(o.body):undefined
+  });
+  var raw=await res.text();
+  var data={};
+  try{data=raw?JSON.parse(raw):{}}catch(e){data={error:raw||('HTTP '+res.status)}}
+  if(!res.ok){
+    var err=new Error(data.error||('HTTP '+res.status));
+    err.status=res.status;
+    err.data=data;
+    throw err;
+  }
+  return data;
+}
+
+function resetChatUI(){
+  hist=[];msgN=0;
+  var c=document.getElementById('msgs');
+  c.innerHTML='';
+  c.appendChild(buildWelcome());
+  rnStats();
+}
+
+function fillChatFromMessages(rows){
+  hist=[];msgN=0;
+  var c=document.getElementById('msgs');
+  c.innerHTML='';
+  rows.forEach(function(r){
+    var role=r.role==='assistant'?'ass':(r.role==='user'?'user':'ass');
+    var m=MODEL_BY_ID[r.model_id||''];
+    addMsg(role,r.content,role==='ass'?(m?m.name:'AI'):null);
+    hist.push({role:r.role==='assistant'?'assistant':r.role,content:r.content});
+  });
+  if(!rows.length)c.appendChild(buildWelcome());
+  scrollToBottomAfterLoad();
+}
+
+function scrollToBottomAfterLoad(){
+  // Run after paint so loaded conversation always lands on latest message.
+  requestAnimationFrame(function(){
+    sc();
+    setTimeout(sc,40);
+  });
+}
+
+function renderConversationSelect(){
+  var csel=document.getElementById('csel');
+  if(!csel)return;
+  csel.innerHTML='';
+  var ph=document.createElement('option');
+  ph.value='';
+  ph.textContent='Select saved chat';
+  csel.appendChild(ph);
+  convList.forEach(function(c){
+    var o=document.createElement('option');
+    o.value=c.id;
+    o.textContent=(c.title||'New Chat').slice(0,50);
+    csel.appendChild(o);
+  });
+  if(activeConversationId)csel.value=activeConversationId;
+}
+
+async function loadConversations(autoOpen){
+  if(!authUser)return;
+  var data=await apiJSON('/api/conversations');
+  convList=data.conversations||[];
+  renderConversationSelect();
+  if(autoOpen && !activeConversationId && convList.length){
+    await loadConversation(convList[0].id);
+  }
+}
+
+async function createConversation(){
+  var data=await apiJSON('/api/conversations',{method:'POST',body:{title:'New Chat'}});
+  activeConversationId=data.conversation.id;
+  await loadConversations(false);
+  var csel=document.getElementById('csel');
+  if(csel)csel.value=activeConversationId;
+  return activeConversationId;
+}
+
+async function ensureConversation(){
+  if(activeConversationId)return activeConversationId;
+  return await createConversation();
+}
+
+async function loadConversation(id){
+  if(!id)return;
+  activeConversationId=id;
+  var data=await apiJSON('/api/messages?conversation_id='+encodeURIComponent(id));
+  fillChatFromMessages(data.messages||[]);
+  var csel=document.getElementById('csel');
+  if(csel)csel.value=id;
+}
+
+async function onChatChange(){
+  var csel=document.getElementById('csel');
+  if(!csel || !csel.value)return;
+  await loadConversation(csel.value);
+}
+
+async function saveMessage(role,content,modelId){
+  var cid=await ensureConversation();
+  await apiJSON('/api/messages',{
+    method:'POST',
+    body:{conversation_id:cid,role:role,content:content,model_id:modelId||null}
+  });
+}
+
+async function authSubmit(action){
+  var username=(document.getElementById('uName').value||'').trim();
+  var password=document.getElementById('uPass').value||'';
+  if(!username||!password){setAuthNote('Enter username and password.',true);return;}
+  try{
+    var data=await apiJSON('/api/auth',{method:'POST',body:{action:action,username:username,password:password}});
+    authUser=data.user;
+    document.getElementById('uPass').value='';
+    setAuthUI();
+    resetChatUI();
+    await loadConversations(true);
+  }catch(e){
+    setAuthNote((e.data&&e.data.error)||e.message,true);
+  }
+}
+
+async function authLogout(){
+  try{await apiJSON('/api/auth',{method:'POST',body:{action:'logout'}});}catch(e){}
+  authUser=null;
+  activeConversationId=null;
+  convList=[];
+  renderConversationSelect();
+  setAuthUI();
+  resetChatUI();
+}
+
+async function initAuth(){
+  setAuthUI();
+  try{
+    var data=await apiJSON('/api/auth');
+    authUser=data.user||null;
+    setAuthUI();
+    if(authUser){
+      await loadConversations(true);
+    }else{
+      resetChatUI();
+    }
+  }catch(e){
+    setAuthUI();
+    setAuthNote('Auth init failed. Check backend env.',true);
+  }
+}
+
 // ══════════════════════════════════════════
 // ALL-TIME CALL TRACKER (localStorage)
 // Survives refresh — stores per-model counts
@@ -734,17 +964,29 @@ async function go(){
   var txt=ta.value.trim();
   if(!txt)return;
 
+  if(!authUser){
+    addSys('Login required to send and save chats.',true);
+    return;
+  }
+
   var m=MODELS[msel.value];
   if(!isChatCapableModel(m)){
     addSys('Selected model is task-specific and not chat-capable. Choose a model without [NO CHAT].',true);
     return;
   }
+  try{await ensureConversation();}
+  catch(e){
+    addSys('Could not create chat session: '+e.message,true);
+    return;
+  }
+
   ta.value='';ar(ta);
   document.getElementById('cc').textContent='0 chars';
   document.getElementById('sbtn').disabled=true;
 
   addMsg('user',txt,null);
   hist.push({role:'user',content:txt});
+  try{await saveMessage('user',txt,null);}catch(e){addSys('Warning: user message not saved.',true);}
   addTyp();
 
   try{
@@ -769,7 +1011,9 @@ async function go(){
       var reply=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'(empty)';
       hist.push({role:'assistant',content:reply});
       addMsg('ass',reply,m.name);
+      try{await saveMessage('assistant',reply,m.id);}catch(e){addSys('Warning: assistant message not saved.',true);}
       recCall(m.id);
+      loadConversations(false).catch(function(){});
     }
   }catch(e){
     rmTyp();addSys('NETWORK ERROR: '+e.message,true);
@@ -851,11 +1095,18 @@ function buildWelcome(){
 }
 
 function clr(){
-  hist=[];msgN=0;
-  var c=document.getElementById('msgs');
-  c.innerHTML='';
-  c.appendChild(buildWelcome());
-  rnStats();
+  if(authUser){
+    newChat();
+    return;
+  }
+  resetChatUI();
+}
+
+function newChat(){
+  activeConversationId=null;
+  resetChatUI();
+  var csel=document.getElementById('csel');
+  if(csel)csel.value='';
 }
 
 // ── HELPERS ──
@@ -869,6 +1120,8 @@ function oi(el){ar(el);document.getElementById('cc').textContent=el.value.length
 function ar(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,110)+'px';}
 function sc(){var c=document.getElementById('msgs');c.scrollTop=c.scrollHeight;}
 function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(function(){t.style.display='none';},3000);}
+
+initAuth();
 </script>
 </body>
 </html>
