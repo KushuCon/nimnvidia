@@ -759,6 +759,8 @@ const MODEL_BY_ID=Object.fromEntries(MODELS.map(m=>[m.id,m]));
 let authUser=null;
 let activeConversationId=null;
 let convList=[];
+let activeMessagesCache=[];
+const BOOT_CACHE_KEY='nimBootV1';
 
 function setBodyState(){
   document.body.classList.toggle('auth-locked',!authUser);
@@ -820,6 +822,56 @@ function setAuthUI(){
   }
 }
 
+function loadBootCache(){
+  try{return JSON.parse(localStorage.getItem(BOOT_CACHE_KEY)||'null');}
+  catch(e){return null;}
+}
+
+function saveBootCache(){
+  if(!authUser || !activeConversationId) return;
+  const payload={
+    user:{id:authUser.id,username:authUser.username},
+    conversations:(convList||[]).slice(0,80).map(function(c){
+      return {id:c.id,title:c.title,created_at:c.created_at,updated_at:c.updated_at};
+    }),
+    activeConversationId:activeConversationId,
+    messages:(activeMessagesCache||[]).slice(-160),
+    ts:Date.now()
+  };
+  try{localStorage.setItem(BOOT_CACHE_KEY,JSON.stringify(payload));}catch(e){}
+}
+
+function clearBootCache(){
+  try{localStorage.removeItem(BOOT_CACHE_KEY);}catch(e){}
+}
+
+function applyBootPayload(payload){
+  if(!payload || !payload.user){
+    authUser=null;
+    activeConversationId=null;
+    convList=[];
+    activeMessagesCache=[];
+    renderConversationSelect();
+    setAuthUI();
+    resetChatUI();
+    clearBootCache();
+    return;
+  }
+
+  authUser=payload.user;
+  convList=payload.conversations||[];
+  activeConversationId=payload.activeConversationId||null;
+  setAuthUI();
+  renderConversationSelect();
+  fillChatFromMessages(payload.messages||[]);
+  saveBootCache();
+}
+
+async function fetchBootstrap(){
+  var last=activeConversationId||'';
+  return await apiJSON('/api/bootstrap?last_conversation_id='+encodeURIComponent(last));
+}
+
 async function apiJSON(url,opts){
   var o=opts||{};
   var h=o.headers||{};
@@ -849,6 +901,9 @@ function resetChatUI(){
 }
 
 function fillChatFromMessages(rows){
+  activeMessagesCache=(rows||[]).map(function(r){
+    return {role:r.role,content:r.content,model_id:r.model_id||null,created_at:r.created_at||null};
+  });
   hist=[];msgN=0;
   var c=document.getElementById('msgs');
   c.innerHTML='';
@@ -860,6 +915,7 @@ function fillChatFromMessages(rows){
   });
   if(!rows.length)c.appendChild(buildWelcome());
   scrollToBottomAfterLoad();
+  saveBootCache();
 }
 
 function scrollToBottomAfterLoad(){
@@ -936,6 +992,7 @@ async function loadConversations(autoOpen){
   var data=await apiJSON('/api/conversations');
   convList=data.conversations||[];
   renderConversationSelect();
+  saveBootCache();
   if(autoOpen && !activeConversationId && convList.length){
     await loadConversation(convList[0].id);
   }
@@ -960,6 +1017,7 @@ async function loadConversation(id){
   var data=await apiJSON('/api/messages?conversation_id='+encodeURIComponent(id));
   fillChatFromMessages(data.messages||[]);
   renderConversationSelect();
+  saveBootCache();
 }
 
 async function saveMessage(role,content,modelId){
@@ -978,9 +1036,8 @@ async function authSubmit(action){
     var data=await apiJSON('/api/auth',{method:'POST',body:{action:action,username:username,password:password}});
     authUser=data.user;
     document.getElementById('uPass').value='';
-    setAuthUI();
-    resetChatUI();
-    await loadConversations(true);
+    var boot=await fetchBootstrap();
+    applyBootPayload(boot);
   }catch(e){
     setAuthNote((e.data&&e.data.error)||e.message,true);
   }
@@ -991,26 +1048,31 @@ async function authLogout(){
   authUser=null;
   activeConversationId=null;
   convList=[];
+  activeMessagesCache=[];
   renderConversationSelect();
   setAuthUI();
   resetChatUI();
   closeDrawer();
+  clearBootCache();
 }
 
 async function initAuth(){
-  setAuthUI();
-  try{
-    var data=await apiJSON('/api/auth');
-    authUser=data.user||null;
+  var cached=loadBootCache();
+  if(cached && cached.user){
+    applyBootPayload(cached);
+  }else{
     setAuthUI();
-    if(authUser){
-      await loadConversations(true);
-    }else{
+  }
+
+  try{
+    var boot=await fetchBootstrap();
+    applyBootPayload(boot);
+  }catch(e){
+    if(!cached || !cached.user){
+      setAuthUI();
+      setAuthNote('Auth init failed. Check backend env.',true);
       resetChatUI();
     }
-  }catch(e){
-    setAuthUI();
-    setAuthNote('Auth init failed. Check backend env.',true);
   }
 }
 
@@ -1176,6 +1238,8 @@ async function go(){
 
   addMsg('user',txt,null);
   hist.push({role:'user',content:txt});
+  activeMessagesCache.push({role:'user',content:txt,model_id:null,created_at:new Date().toISOString()});
+  saveBootCache();
   try{await saveMessage('user',txt,null);}catch(e){addSys('Warning: user message not saved.',true);}
   addTyp();
 
@@ -1201,6 +1265,8 @@ async function go(){
       var reply=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'(empty)';
       hist.push({role:'assistant',content:reply});
       addMsg('ass',reply,m.name);
+      activeMessagesCache.push({role:'assistant',content:reply,model_id:m.id,created_at:new Date().toISOString()});
+      saveBootCache();
       try{await saveMessage('assistant',reply,m.id);}catch(e){addSys('Warning: assistant message not saved.',true);}
       recCall(m.id);
       loadConversations(false).catch(function(){});
