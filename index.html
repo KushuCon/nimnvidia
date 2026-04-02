@@ -28,6 +28,82 @@ body::after{
   content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
   background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.03) 3px,rgba(0,0,0,0.03) 4px);
 }
+body.auth-locked{overflow:hidden}
+body.auth-locked .hdr,
+body.auth-locked #msgs,
+body.auth-locked .inp-wrap,
+body.auth-locked .chat-toggle,
+body.auth-locked .chat-drawer,
+body.auth-locked .chat-backdrop{display:none}
+body.auth-locked .ctrl{
+  flex:1;justify-content:center;align-items:center;gap:14px;
+  padding:18px 14px;background:radial-gradient(circle at top, rgba(118,185,0,.12), transparent 35%), var(--bg);
+}
+body.auth-locked .ctrl > :not(#authGate){display:none}
+body.auth-locked #authGate{display:flex}
+body.auth-locked .auth-shell{width:min(100%,420px)}
+body.auth-locked .auth-box{padding:16px;border-radius:14px}
+body.logged-in .auth-shell{display:none}
+body.logged-in .chat-toggle{display:inline-flex}
+body.logged-in .chat-drawer{display:flex}
+
+.auth-shell{
+  display:flex;flex-direction:column;align-items:center;gap:14px;
+}
+.auth-brand{
+  width:min(100%,420px);display:flex;flex-direction:column;gap:6px;align-items:flex-start;
+}
+.auth-kicker{
+  font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--g);
+}
+.auth-title{
+  font-family:'Orbitron',sans-serif;font-size:26px;font-weight:900;letter-spacing:2px;color:var(--white);
+}
+.auth-copy{
+  font-family:'Share Tech Mono',monospace;font-size:10px;line-height:1.8;color:var(--textd);max-width:420px;
+}
+
+.chat-toggle{
+  display:none;align-items:center;justify-content:center;gap:6px;
+  background:#0e180a;border:1px solid var(--border2);color:var(--text);
+  font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.8px;
+  padding:7px 10px;border-radius:var(--r);cursor:pointer;white-space:nowrap;
+}
+.chat-toggle:active{border-color:var(--g2);color:var(--g)}
+
+.chat-drawer{
+  position:fixed;top:0;left:0;bottom:0;width:min(82vw,320px);
+  background:linear-gradient(180deg,#0b120b,#070b07);
+  border-right:1px solid var(--border2);box-shadow:18px 0 40px rgba(0,0,0,.45);
+  transform:translateX(-105%);transition:transform .22s ease;z-index:5000;
+  display:none;flex-direction:column;padding:14px;gap:12px;
+}
+.chat-drawer.open{transform:translateX(0)}
+.chat-backdrop{
+  position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:4990;display:none;
+}
+.chat-backdrop.open{display:block}
+.drawer-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.drawer-title{font-family:'Orbitron',sans-serif;font-size:11px;font-weight:800;letter-spacing:2px;color:var(--g)}
+.drawer-sub{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--textdd);margin-top:2px}
+.drawer-actions{display:flex;gap:8px;align-items:center}
+.drawer-close{
+  background:transparent;border:1px solid var(--border);color:var(--textd);
+  font-family:'Share Tech Mono',monospace;font-size:9px;padding:6px 8px;border-radius:var(--r);cursor:pointer;
+}
+.drawer-new{
+  background:#0d1a08;border:1px solid var(--g2);color:var(--g);
+  font-family:'Share Tech Mono',monospace;font-size:9px;padding:6px 8px;border-radius:var(--r);cursor:pointer;
+}
+.drawer-list{display:flex;flex-direction:column;gap:8px;overflow-y:auto;flex:1;padding-right:2px}
+.drawer-item{
+  text-align:left;background:var(--bg3);border:1px solid var(--border);color:var(--text);
+  padding:10px 10px;border-radius:var(--r);cursor:pointer;display:flex;flex-direction:column;gap:4px;
+}
+.drawer-item.active{border-color:var(--g2);background:#0c1608}
+.drawer-item-title{font-family:'Share Tech Mono',monospace;font-size:10px}
+.drawer-item-meta{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--textdd)}
+.drawer-empty{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--textdd);line-height:1.7;padding:8px 0}
 
 /* HEADER */
 .hdr{
@@ -274,7 +350,22 @@ textarea#ti::placeholder{color:var(--textdd)}
 }
 </style>
 </head>
-<body>
+<body class="auth-locked">
+
+<div class="chat-backdrop" id="chatBackdrop" onclick="closeDrawer()"></div>
+<aside class="chat-drawer" id="chatDrawer" aria-label="Chats">
+  <div class="drawer-head">
+    <div>
+      <div class="drawer-title">SAVED CHATS</div>
+      <div class="drawer-sub" id="drawerSub">Login to view chats</div>
+    </div>
+    <div class="drawer-actions">
+      <button class="drawer-new" type="button" onclick="newChat()">+ NEW</button>
+      <button class="drawer-close" type="button" onclick="closeDrawer()">✕</button>
+    </div>
+  </div>
+  <div class="drawer-list" id="chatList"></div>
+</aside>
 
 <!-- HEADER -->
 <div class="hdr">
@@ -286,6 +377,7 @@ textarea#ti::placeholder{color:var(--textdd)}
     </div>
   </div>
   <div class="stats" id="statsEl">
+    <button class="chat-toggle" id="chatToggle" type="button" onclick="toggleDrawer()">☰ Chats</button>
     <div class="sdot"></div>
     <span class="slbl">M:</span><span class="sval" id="sM">0</span>
     <span class="sdiv">|</span>
@@ -299,23 +391,25 @@ textarea#ti::placeholder{color:var(--textdd)}
     <span class="lbl">MODEL</span>
     <select id="msel" onchange="onMC()"></select>
   </div>
-  <div class="crow" id="chatRow" style="display:none">
-    <span class="lbl">CHAT</span>
-    <select id="csel" onchange="onChatChange()"></select>
-    <button class="tbtn" type="button" onclick="newChat()">+ NEW</button>
-  </div>
   <div class="mbadge" id="mbadge"><span style="color:var(--text)">Select a model</span></div>
-  <div class="auth-box" id="authBox">
-    <div class="auth-row">
-      <input id="uName" class="auth-inp" type="text" autocomplete="username" placeholder="username">
-      <input id="uPass" class="auth-inp" type="password" autocomplete="current-password" placeholder="password">
+  <div id="authGate" class="auth-shell">
+    <div class="auth-brand">
+      <div class="auth-kicker">NIM CHAT</div>
+      <div class="auth-title">Save your chats</div>
+      <div class="auth-copy">Login or create a username/password account. Chats stay saved for 30 days, and your conversation list slides in from the side after login.</div>
     </div>
-    <div class="auth-row">
-      <button class="auth-btn ok" type="button" onclick="authSubmit('login')">LOGIN</button>
-      <button class="auth-btn" type="button" onclick="authSubmit('signup')">SIGNUP</button>
-      <button class="auth-btn" type="button" onclick="authLogout()" id="logoutBtn" style="display:none">LOGOUT</button>
+    <div class="auth-box" id="authBox">
+      <div class="auth-row">
+        <input id="uName" class="auth-inp" type="text" autocomplete="username" placeholder="username">
+        <input id="uPass" class="auth-inp" type="password" autocomplete="current-password" placeholder="password">
+      </div>
+      <div class="auth-row">
+        <button class="auth-btn ok" type="button" onclick="authSubmit('login')">LOGIN</button>
+        <button class="auth-btn" type="button" onclick="authSubmit('signup')">SIGNUP</button>
+        <button class="auth-btn" type="button" onclick="authLogout()" id="logoutBtn" style="display:none">LOGOUT</button>
+      </div>
+      <div class="auth-note" id="authNote">Login/signup to save chats for 30 days.</div>
     </div>
-    <div class="auth-note" id="authNote">Login/signup to save chats for 30 days.</div>
   </div>
   <div class="rate-note">⚡ Free: 40 req/min · API key server-side via Vercel env</div>
 </div>
@@ -637,6 +731,33 @@ let authUser=null;
 let activeConversationId=null;
 let convList=[];
 
+function setBodyState(){
+  document.body.classList.toggle('auth-locked',!authUser);
+  document.body.classList.toggle('logged-in',!!authUser);
+}
+
+function openDrawer(){
+  if(!authUser) return;
+  var drawer=document.getElementById('chatDrawer');
+  var backdrop=document.getElementById('chatBackdrop');
+  if(drawer) drawer.classList.add('open');
+  if(backdrop) backdrop.classList.add('open');
+}
+
+function closeDrawer(){
+  var drawer=document.getElementById('chatDrawer');
+  var backdrop=document.getElementById('chatBackdrop');
+  if(drawer) drawer.classList.remove('open');
+  if(backdrop) backdrop.classList.remove('open');
+}
+
+function toggleDrawer(){
+  var drawer=document.getElementById('chatDrawer');
+  if(!drawer) return;
+  if(drawer.classList.contains('open')) closeDrawer();
+  else openDrawer();
+}
+
 function setAuthNote(msg,isErr){
   var el=document.getElementById('authNote');
   if(!el)return;
@@ -649,16 +770,19 @@ function setAuthUI(){
   var userIn=document.getElementById('uName');
   var passIn=document.getElementById('uPass');
   var logoutBtn=document.getElementById('logoutBtn');
-  var chatRow=document.getElementById('chatRow');
   var ta=document.getElementById('ti');
   var sbtn=document.getElementById('sbtn');
+  var chatToggle=document.getElementById('chatToggle');
+  var drawerSub=document.getElementById('drawerSub');
 
   if(userIn) userIn.disabled=logged;
   if(passIn) passIn.disabled=logged;
   if(logoutBtn) logoutBtn.style.display=logged?'inline-block':'none';
-  if(chatRow) chatRow.style.display=logged?'flex':'none';
   if(ta) ta.disabled=!logged;
   if(sbtn) sbtn.disabled=!logged;
+  if(chatToggle) chatToggle.style.display=logged?'inline-flex':'none';
+  if(drawerSub) drawerSub.textContent=logged ? ('Signed in as @'+authUser.username) : 'Login to view chats';
+  setBodyState();
 
   if(logged){
     setAuthNote('Logged in as @'+authUser.username+' · Session: 30 days',false);
@@ -718,20 +842,33 @@ function scrollToBottomAfterLoad(){
 }
 
 function renderConversationSelect(){
-  var csel=document.getElementById('csel');
-  if(!csel)return;
-  csel.innerHTML='';
-  var ph=document.createElement('option');
-  ph.value='';
-  ph.textContent='Select saved chat';
-  csel.appendChild(ph);
+  var list=document.getElementById('chatList');
+  if(!list)return;
+  list.innerHTML='';
+  if(!convList.length){
+    var empty=document.createElement('div');
+    empty.className='drawer-empty';
+    empty.textContent='No saved chats yet. Start a new conversation and it will appear here.';
+    list.appendChild(empty);
+    return;
+  }
   convList.forEach(function(c){
-    var o=document.createElement('option');
-    o.value=c.id;
-    o.textContent=(c.title||'New Chat').slice(0,50);
-    csel.appendChild(o);
+    var btn=document.createElement('button');
+    btn.type='button';
+    btn.className='drawer-item'+(c.id===activeConversationId?' active':'');
+    btn.onclick=function(){
+      loadConversation(c.id).then(closeDrawer).catch(function(){});
+    };
+    var title=document.createElement('div');
+    title.className='drawer-item-title';
+    title.textContent=(c.title||'New Chat').slice(0,50);
+    var meta=document.createElement('div');
+    meta.className='drawer-item-meta';
+    meta.textContent=(c.updated_at||c.created_at||'').replace('T',' ').slice(0,16);
+    btn.appendChild(title);
+    btn.appendChild(meta);
+    list.appendChild(btn);
   });
-  if(activeConversationId)csel.value=activeConversationId;
 }
 
 async function loadConversations(autoOpen){
@@ -748,8 +885,7 @@ async function createConversation(){
   var data=await apiJSON('/api/conversations',{method:'POST',body:{title:'New Chat'}});
   activeConversationId=data.conversation.id;
   await loadConversations(false);
-  var csel=document.getElementById('csel');
-  if(csel)csel.value=activeConversationId;
+  renderConversationSelect();
   return activeConversationId;
 }
 
@@ -763,14 +899,7 @@ async function loadConversation(id){
   activeConversationId=id;
   var data=await apiJSON('/api/messages?conversation_id='+encodeURIComponent(id));
   fillChatFromMessages(data.messages||[]);
-  var csel=document.getElementById('csel');
-  if(csel)csel.value=id;
-}
-
-async function onChatChange(){
-  var csel=document.getElementById('csel');
-  if(!csel || !csel.value)return;
-  await loadConversation(csel.value);
+  renderConversationSelect();
 }
 
 async function saveMessage(role,content,modelId){
@@ -805,6 +934,7 @@ async function authLogout(){
   renderConversationSelect();
   setAuthUI();
   resetChatUI();
+  closeDrawer();
 }
 
 async function initAuth(){
