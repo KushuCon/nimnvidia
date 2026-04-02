@@ -41,17 +41,17 @@ body.auth-locked .ctrl{
 }
 body.auth-locked .ctrl > :not(#authGate){display:none}
 body.auth-locked #authGate{display:flex}
-body.auth-locked .auth-shell{width:min(100%,560px)}
-body.auth-locked .auth-box{padding:20px;border-radius:16px}
+body.auth-locked .auth-shell{width:min(100%,720px)}
+body.auth-locked .auth-box{padding:24px;border-radius:16px}
 body.logged-in .auth-shell{display:none}
 body.logged-in .chat-toggle{display:inline-flex}
 body.logged-in .chat-drawer{display:flex}
 
 .auth-shell{
-  display:flex;flex-direction:column;align-items:center;gap:14px;
+  display:flex;flex-direction:column;align-items:center;gap:14px;width:100%;
 }
 .auth-brand{
-  width:min(100%,560px);display:flex;flex-direction:column;gap:8px;align-items:flex-start;
+  width:100%;display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center;
 }
 .auth-kicker{
   font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--g);
@@ -60,7 +60,7 @@ body.logged-in .chat-drawer{display:flex}
   font-family:'Orbitron',sans-serif;font-size:34px;font-weight:900;letter-spacing:2px;color:var(--white);
 }
 .auth-copy{
-  font-family:'Share Tech Mono',monospace;font-size:12px;line-height:1.8;color:var(--textd);max-width:560px;
+  font-family:'Share Tech Mono',monospace;font-size:12px;line-height:1.8;color:var(--textd);max-width:620px;
 }
 
 .chat-toggle{
@@ -93,6 +93,10 @@ body.logged-in .chat-drawer{display:flex}
 }
 .drawer-new{
   background:#0d1a08;border:1px solid var(--g2);color:var(--g);
+  font-family:'Share Tech Mono',monospace;font-size:9px;padding:6px 8px;border-radius:var(--r);cursor:pointer;
+}
+.drawer-logout{
+  background:transparent;border:1px solid #5a1a1a;color:#cc6666;
   font-family:'Share Tech Mono',monospace;font-size:9px;padding:6px 8px;border-radius:var(--r);cursor:pointer;
 }
 .drawer-list{display:flex;flex-direction:column;gap:8px;overflow-y:auto;flex:1;padding-right:2px}
@@ -218,14 +222,16 @@ select#msel option{background:#0a120a;color:var(--text)}
 
 .auth-box{
   border:1px solid var(--border);background:var(--bg4);border-radius:var(--r);
-  padding:12px;display:flex;flex-direction:column;gap:10px;
+  width:min(100%,680px);
+  padding:16px;display:flex;flex-direction:column;gap:12px;
+  box-shadow:0 14px 28px rgba(0,0,0,.32);
 }
-.auth-row{display:flex;gap:10px;align-items:center}
+.auth-row{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap}
 .auth-inp{
   flex:1;background:var(--bg3);color:var(--text);
   border:1px solid var(--border);border-radius:var(--r);
   padding:11px 12px;font-family:'Share Tech Mono',monospace;font-size:14px;
-  outline:none;min-width:0;
+  outline:none;min-width:240px;
 }
 .auth-inp:focus{border-color:var(--g2)}
 .auth-btn{
@@ -236,6 +242,15 @@ select#msel option{background:#0a120a;color:var(--text)}
 .auth-btn.ok{border-color:var(--g2);color:var(--g)}
 .auth-note{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--textd);letter-spacing:.4px;line-height:1.6}
 .auth-note.err{color:#aa4444}
+
+@media (max-width:620px){
+  .auth-title{font-size:28px}
+  .auth-copy{font-size:11px}
+  .auth-box{width:100%;padding:14px}
+  .auth-inp{min-width:0;width:100%}
+  .auth-row{justify-content:stretch}
+  .auth-btn{flex:1}
+}
 
 /* MESSAGES */
 #msgs{
@@ -367,6 +382,7 @@ textarea#ti::placeholder{color:var(--textdd)}
     </div>
     <div class="drawer-actions">
       <button class="drawer-new" type="button" onclick="newChat()">+ NEW</button>
+      <button class="drawer-logout" type="button" onclick="authLogout()" id="logoutBtnDrawer" style="display:none">LOGOUT</button>
       <button class="drawer-close" type="button" onclick="closeDrawer()">✕</button>
     </div>
   </div>
@@ -399,12 +415,12 @@ textarea#ti::placeholder{color:var(--textdd)}
   </div>
   <div class="mbadge" id="mbadge"><span style="color:var(--text)">Select a model</span></div>
   <div id="authGate" class="auth-shell">
-    <div class="auth-brand">
-      <div class="auth-kicker">NIM CHAT</div>
-      <div class="auth-title">Save your chats</div>
-      <div class="auth-copy">Login or create a username/password account. Chats stay saved for 30 days, and your conversation list slides in from the side after login.</div>
-    </div>
     <div class="auth-box" id="authBox">
+      <div class="auth-brand">
+        <div class="auth-kicker">NIM CHAT</div>
+        <div class="auth-title">Save your chats</div>
+        <div class="auth-copy">Login or create a username/password account. Chats stay saved for 30 days, and your conversation list slides in from the side after login.</div>
+      </div>
       <div class="auth-row">
         <input id="uName" class="auth-inp" type="text" autocomplete="username" placeholder="username">
         <input id="uPass" class="auth-inp" type="password" autocomplete="current-password" placeholder="password">
@@ -412,7 +428,6 @@ textarea#ti::placeholder{color:var(--textdd)}
       <div class="auth-row">
         <button class="auth-btn ok" type="button" onclick="authSubmit('login')">LOGIN</button>
         <button class="auth-btn" type="button" onclick="authSubmit('signup')">SIGNUP</button>
-        <button class="auth-btn" type="button" onclick="authLogout()" id="logoutBtn" style="display:none">LOGOUT</button>
       </div>
       <div class="auth-note" id="authNote">Login/signup to save chats for 30 days.</div>
     </div>
@@ -775,7 +790,7 @@ function setAuthUI(){
   var logged=!!authUser;
   var userIn=document.getElementById('uName');
   var passIn=document.getElementById('uPass');
-  var logoutBtn=document.getElementById('logoutBtn');
+  var logoutBtnDrawer=document.getElementById('logoutBtnDrawer');
   var ta=document.getElementById('ti');
   var sbtn=document.getElementById('sbtn');
   var chatToggle=document.getElementById('chatToggle');
@@ -783,7 +798,7 @@ function setAuthUI(){
 
   if(userIn) userIn.disabled=logged;
   if(passIn) passIn.disabled=logged;
-  if(logoutBtn) logoutBtn.style.display=logged?'inline-block':'none';
+  if(logoutBtnDrawer) logoutBtnDrawer.style.display=logged?'inline-block':'none';
   if(ta) ta.disabled=!logged;
   if(sbtn) sbtn.disabled=!logged;
   if(chatToggle) chatToggle.style.display=logged?'inline-flex':'none';
