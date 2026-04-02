@@ -71,6 +71,14 @@ body.logged-in .chat-drawer{display:flex}
 }
 .chat-toggle:active{border-color:var(--g2);color:var(--g)}
 
+.logout-top{
+  display:none;align-items:center;justify-content:center;
+  background:transparent;border:1px solid #5a1a1a;color:#cc6666;
+  font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.8px;
+  padding:7px 10px;border-radius:var(--r);cursor:pointer;white-space:nowrap;
+}
+.logout-top:active{border-color:#aa4444;color:#ff8888}
+
 .chat-drawer{
   position:fixed;top:0;left:0;bottom:0;width:min(82vw,320px);
   background:linear-gradient(180deg,#0b120b,#070b07);
@@ -382,7 +390,6 @@ textarea#ti::placeholder{color:var(--textdd)}
     </div>
     <div class="drawer-actions">
       <button class="drawer-new" type="button" onclick="newChat()">+ NEW</button>
-      <button class="drawer-logout" type="button" onclick="authLogout()" id="logoutBtnDrawer" style="display:none">LOGOUT</button>
       <button class="drawer-close" type="button" onclick="closeDrawer()">✕</button>
     </div>
   </div>
@@ -398,13 +405,14 @@ textarea#ti::placeholder{color:var(--textdd)}
       <div class="logo-sub">NVIDIA FREE ENDPOINTS</div>
     </div>
   </div>
+  <button class="chat-toggle" id="chatToggle" type="button" onclick="toggleDrawer()">☰ Chats</button>
   <div class="stats" id="statsEl">
-    <button class="chat-toggle" id="chatToggle" type="button" onclick="toggleDrawer()">☰ Chats</button>
     <div class="sdot"></div>
     <span class="slbl">M:</span><span class="sval" id="sM">0</span>
     <span class="sdiv">|</span>
     <span class="slbl">CALLS:</span><span class="sval" id="sC">0</span>
   </div>
+  <button class="logout-top" type="button" id="logoutBtnTop" onclick="authLogout()">LOGOUT</button>
 </div>
 
 <!-- CONTROLS -->
@@ -790,7 +798,7 @@ function setAuthUI(){
   var logged=!!authUser;
   var userIn=document.getElementById('uName');
   var passIn=document.getElementById('uPass');
-  var logoutBtnDrawer=document.getElementById('logoutBtnDrawer');
+  var logoutBtnTop=document.getElementById('logoutBtnTop');
   var ta=document.getElementById('ti');
   var sbtn=document.getElementById('sbtn');
   var chatToggle=document.getElementById('chatToggle');
@@ -798,7 +806,7 @@ function setAuthUI(){
 
   if(userIn) userIn.disabled=logged;
   if(passIn) passIn.disabled=logged;
-  if(logoutBtnDrawer) logoutBtnDrawer.style.display=logged?'inline-block':'none';
+  if(logoutBtnTop) logoutBtnTop.style.display=logged?'inline-flex':'none';
   if(ta) ta.disabled=!logged;
   if(sbtn) sbtn.disabled=!logged;
   if(chatToggle) chatToggle.style.display=logged?'inline-flex':'none';
