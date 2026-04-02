@@ -41,8 +41,8 @@ body.auth-locked .ctrl{
 }
 body.auth-locked .ctrl > :not(#authGate){display:none}
 body.auth-locked #authGate{display:flex}
-body.auth-locked .auth-shell{width:min(100%,420px)}
-body.auth-locked .auth-box{padding:16px;border-radius:14px}
+body.auth-locked .auth-shell{width:min(100%,560px)}
+body.auth-locked .auth-box{padding:20px;border-radius:16px}
 body.logged-in .auth-shell{display:none}
 body.logged-in .chat-toggle{display:inline-flex}
 body.logged-in .chat-drawer{display:flex}
@@ -51,16 +51,16 @@ body.logged-in .chat-drawer{display:flex}
   display:flex;flex-direction:column;align-items:center;gap:14px;
 }
 .auth-brand{
-  width:min(100%,420px);display:flex;flex-direction:column;gap:6px;align-items:flex-start;
+  width:min(100%,560px);display:flex;flex-direction:column;gap:8px;align-items:flex-start;
 }
 .auth-kicker{
-  font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--g);
+  font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--g);
 }
 .auth-title{
-  font-family:'Orbitron',sans-serif;font-size:26px;font-weight:900;letter-spacing:2px;color:var(--white);
+  font-family:'Orbitron',sans-serif;font-size:34px;font-weight:900;letter-spacing:2px;color:var(--white);
 }
 .auth-copy{
-  font-family:'Share Tech Mono',monospace;font-size:10px;line-height:1.8;color:var(--textd);max-width:420px;
+  font-family:'Share Tech Mono',monospace;font-size:12px;line-height:1.8;color:var(--textd);max-width:560px;
 }
 
 .chat-toggle{
@@ -101,8 +101,14 @@ body.logged-in .chat-drawer{display:flex}
   padding:10px 10px;border-radius:var(--r);cursor:pointer;display:flex;flex-direction:column;gap:4px;
 }
 .drawer-item.active{border-color:var(--g2);background:#0c1608}
+.drawer-item-head{display:flex;align-items:center;gap:8px}
 .drawer-item-title{font-family:'Share Tech Mono',monospace;font-size:10px}
 .drawer-item-meta{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--textdd)}
+.drawer-edit{
+  margin-left:auto;background:transparent;border:1px solid var(--border);color:var(--textd);
+  border-radius:2px;font-family:'Share Tech Mono',monospace;font-size:8px;padding:3px 6px;cursor:pointer;
+}
+.drawer-edit:active{border-color:var(--g2);color:var(--g)}
 .drawer-empty{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--textdd);line-height:1.7;padding:8px 0}
 
 /* HEADER */
@@ -212,23 +218,23 @@ select#msel option{background:#0a120a;color:var(--text)}
 
 .auth-box{
   border:1px solid var(--border);background:var(--bg4);border-radius:var(--r);
-  padding:7px;display:flex;flex-direction:column;gap:6px;
+  padding:12px;display:flex;flex-direction:column;gap:10px;
 }
-.auth-row{display:flex;gap:6px;align-items:center}
+.auth-row{display:flex;gap:10px;align-items:center}
 .auth-inp{
   flex:1;background:var(--bg3);color:var(--text);
   border:1px solid var(--border);border-radius:var(--r);
-  padding:7px 9px;font-family:'Share Tech Mono',monospace;font-size:10px;
+  padding:11px 12px;font-family:'Share Tech Mono',monospace;font-size:14px;
   outline:none;min-width:0;
 }
 .auth-inp:focus{border-color:var(--g2)}
 .auth-btn{
   background:#0e180a;border:1px solid var(--border2);color:var(--text);
-  font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.6px;
-  padding:7px 10px;border-radius:var(--r);cursor:pointer;white-space:nowrap;
+  font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:.8px;
+  padding:11px 14px;border-radius:var(--r);cursor:pointer;white-space:nowrap;
 }
 .auth-btn.ok{border-color:var(--g2);color:var(--g)}
-.auth-note{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--textd);letter-spacing:.4px}
+.auth-note{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--textd);letter-spacing:.4px;line-height:1.6}
 .auth-note.err{color:#aa4444}
 
 /* MESSAGES */
@@ -853,22 +859,53 @@ function renderConversationSelect(){
     return;
   }
   convList.forEach(function(c){
-    var btn=document.createElement('button');
-    btn.type='button';
-    btn.className='drawer-item'+(c.id===activeConversationId?' active':'');
-    btn.onclick=function(){
+    var item=document.createElement('div');
+    item.className='drawer-item'+(c.id===activeConversationId?' active':'');
+    item.onclick=function(){
       loadConversation(c.id).then(closeDrawer).catch(function(){});
     };
+
+    var head=document.createElement('div');
+    head.className='drawer-item-head';
     var title=document.createElement('div');
     title.className='drawer-item-title';
     title.textContent=(c.title||'New Chat').slice(0,50);
+
+    var editBtn=document.createElement('button');
+    editBtn.type='button';
+    editBtn.className='drawer-edit';
+    editBtn.textContent='Rename';
+    editBtn.onclick=function(e){
+      e.stopPropagation();
+      renameConversation(c);
+    };
+
+    head.appendChild(title);
+    head.appendChild(editBtn);
+
     var meta=document.createElement('div');
     meta.className='drawer-item-meta';
     meta.textContent=(c.updated_at||c.created_at||'').replace('T',' ').slice(0,16);
-    btn.appendChild(title);
-    btn.appendChild(meta);
-    list.appendChild(btn);
+    item.appendChild(head);
+    item.appendChild(meta);
+    list.appendChild(item);
   });
+}
+
+async function renameConversation(convo){
+  if(!convo || !convo.id) return;
+  var next=window.prompt('Rename chat:',convo.title||'New Chat');
+  if(next===null) return;
+  next=String(next).trim();
+  if(!next){toast('Title cannot be empty');return;}
+  try{
+    await apiJSON('/api/conversations',{method:'PATCH',body:{id:convo.id,title:next}});
+    await loadConversations(false);
+    renderConversationSelect();
+    toast('Chat renamed');
+  }catch(e){
+    toast('Rename failed: '+((e.data&&e.data.error)||e.message));
+  }
 }
 
 async function loadConversations(autoOpen){
