@@ -468,7 +468,7 @@ textarea#ti::placeholder{color:var(--textdd)}
   </div>
   <div class="mbadge" id="mbadge"><span style="color:var(--text)">Select a model</span></div>
   <div class="mem-row">
-    <button type="button" id="memScopeBtn" class="mem-pill" onclick="toggleMemoryScope()">Memory: <strong>All Chats</strong></button>
+    <button type="button" id="memScopeBtn" class="mem-pill" onclick="toggleMemoryScope()">Memory: <strong>Current Chat</strong></button>
   </div>
   <div id="authGate" class="auth-shell">
     <div class="auth-box" id="authBox">
@@ -782,7 +782,13 @@ function isLikelyChatModel(m){
   return hasChatTag && isChatCapableModel(m);
 }
 
-const defaultModelIndex=MODELS.findIndex(isLikelyChatModel);
+const preferredDefaultModelId='moonshotai/kimi-k2-instruct-0905';
+const preferredDefaultModelIndex=MODELS.findIndex(function(m){
+  return m.id===preferredDefaultModelId && isChatCapableModel(m);
+});
+const defaultModelIndex=preferredDefaultModelIndex>=0
+  ? preferredDefaultModelIndex
+  : MODELS.findIndex(isLikelyChatModel);
 if(defaultModelIndex>=0) msel.value=String(defaultModelIndex);
 
 function onMC(){
@@ -812,7 +818,7 @@ const BOOT_CACHE_KEY='nimBootV1';
 const BOOT_MIN_DELAY=260;
 const RAG_SETTINGS_KEY='nimRagSettingsV1';
 const RECENT_WINDOW_SIZE=18;
-let ragScope='all';
+let ragScope='current';
 
 function setBodyState(){
   document.body.classList.toggle('auth-locked',!authUser);
