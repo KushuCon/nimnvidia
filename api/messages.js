@@ -1,4 +1,5 @@
 import { requireSession, supabaseRest } from './_supabase.js';
+import { indexMessageForMemory, maybeCreateSummarySnapshot } from './_memory.js';
 
 function firstLineTitle(text) {
   const s = String(text || '').replace(/\s+/g, ' ').trim();
@@ -60,6 +61,23 @@ export default async function handler(req, res) {
           method: 'PATCH',
           body: { title: firstLineTitle(content) },
         });
+      }
+
+      // Background memory indexing: non-fatal for normal chat flow.
+      try {
+        const msg = inserted && inserted[0] ? inserted[0] : null;
+        if (msg && msg.id) {
+          await indexMessageForMemory({
+            userId: session.user_id,
+            conversationId,
+            messageId: msg.id,
+            role,
+            content,
+          });
+          await maybeCreateSummarySnapshot({ userId: session.user_id, conversationId });
+        }
+      } catch (_) {
+        // Do not fail user message save if memory indexing fails.
       }
 
       return res.status(200).json({ message: inserted[0] });

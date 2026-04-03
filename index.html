@@ -250,6 +250,14 @@ select#msel option{background:#0a120a;color:var(--text)}
   padding:4px 9px;letter-spacing:.3px;
 }
 
+.mem-row{display:flex;gap:8px;align-items:center;justify-content:flex-end}
+.mem-pill{
+  background:#0c150a;border:1px solid var(--border2);color:var(--text);
+  font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.6px;
+  padding:6px 9px;border-radius:var(--r);cursor:pointer;
+}
+.mem-pill strong{color:var(--g)}
+
 .auth-box{
   border:1px solid var(--border);background:var(--bg4);border-radius:var(--r);
   width:min(100%,680px);
@@ -280,6 +288,7 @@ select#msel option{background:#0a120a;color:var(--text)}
   .auth-inp{min-width:0;width:100%}
   .auth-row{justify-content:stretch}
   .auth-btn{flex:1}
+  .mem-row{justify-content:flex-start}
 }
 
 /* MESSAGES */
@@ -458,6 +467,9 @@ textarea#ti::placeholder{color:var(--textdd)}
     <select id="msel" onchange="onMC()"></select>
   </div>
   <div class="mbadge" id="mbadge"><span style="color:var(--text)">Select a model</span></div>
+  <div class="mem-row">
+    <button type="button" id="memScopeBtn" class="mem-pill" onclick="toggleMemoryScope()">Memory: <strong>All Chats</strong></button>
+  </div>
   <div id="authGate" class="auth-shell">
     <div class="auth-box" id="authBox">
       <div class="auth-brand">
@@ -798,6 +810,9 @@ let convList=[];
 let activeMessagesCache=[];
 const BOOT_CACHE_KEY='nimBootV1';
 const BOOT_MIN_DELAY=260;
+const RAG_SETTINGS_KEY='nimRagSettingsV1';
+const RECENT_WINDOW_SIZE=18;
+let ragScope='all';
 
 function setBodyState(){
   document.body.classList.toggle('auth-locked',!authUser);
@@ -857,6 +872,32 @@ function setAuthUI(){
   }else{
     setAuthNote('Login/signup to save chats for 30 days.',false);
   }
+}
+
+function loadRagSettings(){
+  try{
+    var s=JSON.parse(localStorage.getItem(RAG_SETTINGS_KEY)||'{}');
+    if(s && (s.scope==='current' || s.scope==='all')) ragScope=s.scope;
+  }catch(e){}
+  renderMemoryScope();
+}
+
+function saveRagSettings(){
+  try{localStorage.setItem(RAG_SETTINGS_KEY,JSON.stringify({scope:ragScope}));}catch(e){}
+}
+
+function renderMemoryScope(){
+  var btn=document.getElementById('memScopeBtn');
+  if(!btn) return;
+  var label=ragScope==='all'?'All Chats':'Current Chat';
+  btn.innerHTML='Memory: <strong>'+label+'</strong>';
+}
+
+function toggleMemoryScope(){
+  ragScope=(ragScope==='all')?'current':'all';
+  renderMemoryScope();
+  saveRagSettings();
+  toast('Memory scope: '+(ragScope==='all'?'All Chats':'Current Chat'));
 }
 
 function loadBootCache(){
@@ -919,6 +960,45 @@ function applyBootPayload(payload){
 async function fetchBootstrap(){
   var last=activeConversationId||'';
   return await apiJSON('/api/bootstrap?last_conversation_id='+encodeURIComponent(last));
+}
+
+async function fetchRagSnippets(queryText){
+  if(!authUser || !queryText) return [];
+  try{
+    var data=await apiJSON('/api/rag-context',{
+      method:'POST',
+      body:{
+        query:queryText,
+        conversation_id:activeConversationId,
+        scope:ragScope,
+        limit:6
+      }
+    });
+    return data.snippets||[];
+  }catch(e){
+    return [];
+  }
+}
+
+function buildRagSystemMessage(snippets){
+  if(!snippets || !snippets.length) return null;
+  var lines=snippets.map(function(s,idx){
+    return (idx+1)+'. ['+(s.title||'Chat')+'] '+(s.role||'user')+': '+(s.text||'');
+  });
+  return {
+    role:'system',
+    content:'Relevant memory snippets from your saved chats. Use only if relevant and do not fabricate details:\n'+lines.join('\n')
+  };
+}
+
+async function buildPromptMessages(currentInput){
+  var recent=hist.slice(-RECENT_WINDOW_SIZE);
+  var snippets=await fetchRagSnippets(currentInput);
+  var ragMsg=buildRagSystemMessage(snippets);
+  var out=[];
+  if(ragMsg) out.push(ragMsg);
+  Array.prototype.push.apply(out,recent);
+  return out;
 }
 
 async function apiJSON(url,opts){
@@ -1298,7 +1378,8 @@ async function go(){
   addTyp();
 
   try{
-    var payload={model:m.id,messages:hist,max_tokens:4096,temperature:0.7,stream:false};
+    var promptMsgs=await buildPromptMessages(txt);
+    var payload={model:m.id,messages:promptMsgs,max_tokens:4096,temperature:0.7,stream:false};
     var res=await postChat(payload);
     var data=await res.json();
     rmTyp();
@@ -1431,6 +1512,7 @@ function ar(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,
 function sc(){var c=document.getElementById('msgs');c.scrollTop=c.scrollHeight;}
 function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(function(){t.style.display='none';},3000);}
 
+loadRagSettings();
 initAuth();
 </script>
 </body>

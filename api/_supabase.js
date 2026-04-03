@@ -48,6 +48,13 @@ export async function supabaseRest(path, { method = 'GET', body } = {}) {
   return data;
 }
 
+export async function supabaseRpc(fnName, args = {}) {
+  return supabaseRest(`rpc/${fnName}`, {
+    method: 'POST',
+    body: args,
+  });
+}
+
 export function parseCookies(req) {
   const cookieHeader = req.headers.cookie || '';
   const out = {};
