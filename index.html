@@ -782,7 +782,7 @@ function isLikelyChatModel(m){
   return hasChatTag && isChatCapableModel(m);
 }
 
-const preferredDefaultModelId='moonshotai/kimi-k2-instruct-0905';
+const preferredDefaultModelId='moonshotai/kimi-k2-thinking';
 const preferredDefaultModelIndex=MODELS.findIndex(function(m){
   return m.id===preferredDefaultModelId && isChatCapableModel(m);
 });
