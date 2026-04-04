@@ -823,10 +823,12 @@ let convList=[];
 let activeMessagesCache=[];
 const IS_ANDROID=typeof navigator!=='undefined' && /Android/i.test(navigator.userAgent||'');
 const BOOT_CACHE_KEY='nimBootV1';
+const GLOBAL_STATS_CACHE_KEY='nimGlobalStatsV1';
 const BOOT_MIN_DELAY=260;
 const RAG_SETTINGS_KEY='nimRagSettingsV1';
 const RECENT_WINDOW_SIZE=18;
 let ragScope='current';
+let globalStats={total:0,models:{}};
 
 function setBodyState(){
   document.body.classList.toggle('auth-locked',!authUser);
@@ -1202,6 +1204,10 @@ async function authLogout(){
 async function initAuth(){
   const started=Date.now();
   showBootSkel();
+  var cachedStats=loadGlobalStatsCache();
+  if(cachedStats) applyGlobalStats(cachedStats);
+  rnStats();
+  fetchGlobalStats().catch(function(){});
   var cached=loadBootCache();
   if(cached && cached.user){
     applyBootPayload(cached);
@@ -1225,23 +1231,42 @@ async function initAuth(){
 }
 
 // ══════════════════════════════════════════
-// ALL-TIME CALL TRACKER (localStorage)
-// Survives refresh — stores per-model counts
+// ALL-TIME CALL TRACKER (server-backed)
+// Shared across all users and redeploys
 // ══════════════════════════════════════════
-function ldStats(){
-  try{return JSON.parse(localStorage.getItem('nimStats'))||{total:0,models:{}}}
-  catch(e){return{total:0,models:{}}}
+function loadGlobalStatsCache(){
+  try{return JSON.parse(localStorage.getItem(GLOBAL_STATS_CACHE_KEY)||'null')}
+  catch(e){return null}
 }
-function svStats(s){try{localStorage.setItem('nimStats',JSON.stringify(s))}catch(e){}}
-function recCall(id){
-  const s=ldStats();
-  s.total=(s.total||0)+1;
-  s.models[id]=(s.models[id]||0)+1;
-  svStats(s);
+function saveGlobalStatsCache(s){try{localStorage.setItem(GLOBAL_STATS_CACHE_KEY,JSON.stringify(s))}catch(e){}}
+function normalizeStats(data){
+  const total=Number(data&&data.total)||0;
+  const models=data&&data.models&&typeof data.models==='object'?data.models:{};
+  return {total,models};
+}
+function applyGlobalStats(data){
+  globalStats=normalizeStats(data);
+  saveGlobalStatsCache(globalStats);
   rnStats();
 }
+async function fetchGlobalStats(){
+  try{
+    var data=await apiJSON('/api/stats');
+    applyGlobalStats(data.stats||data);
+  }catch(e){
+    var cached=loadGlobalStatsCache();
+    if(cached) applyGlobalStats(cached);
+  }
+}
+async function recCall(id){
+  if(!id) return;
+  try{
+    var data=await apiJSON('/api/stats',{method:'POST',body:{model_id:id}});
+    applyGlobalStats(data.stats||data);
+  }catch(e){}
+}
 function rnStats(){
-  const s=ldStats();
+  const s=globalStats||{total:0,models:{}};
   const sM=document.getElementById('sM');
   const sC=document.getElementById('sC');
   const wnum=document.getElementById('wnum');
@@ -1417,7 +1442,7 @@ async function go(){
       activeMessagesCache.push({role:'assistant',content:reply,model_id:m.id,created_at:new Date().toISOString()});
       saveBootCache();
       try{await saveMessage('assistant',reply,m.id);}catch(e){addSys('Warning: assistant message not saved.',true);}
-      recCall(m.id);
+      recCall(m.id).catch(function(){});
       loadConversations(false).catch(function(){});
     }
   }catch(e){
@@ -1433,7 +1458,7 @@ function xpdf(){
   if(!allM.length){toast('Koi message nahi!');return;}
   var m=MODELS[msel.value];
   var date=new Date().toLocaleString('en-IN');
-  var s=ldStats();
+  var s=globalStats||{total:0,models:{}};
   var usedCount=Object.keys(s.models).length;
   var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>NIM Chat Export</title>';
   html+='<style>body{font-family:monospace;background:#fff;color:#111;padding:22px;max-width:760px;margin:auto;font-size:12px}';
