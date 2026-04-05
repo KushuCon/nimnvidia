@@ -782,13 +782,23 @@ function isChatCapableModel(m){
   return true;
 }
 
+function modelUploadCapabilityLabel(m){
+  var chatOk=isChatCapableModel(m);
+  var hasVision=Array.isArray(m.tags) && m.tags.includes('vision');
+  if(chatOk && hasVision) return 'both pdf/image upload can be done';
+  if(chatOk) return 'pdf upload can also be done';
+  if(hasVision) return 'image upload can also be done';
+  return 'upload not available';
+}
+
 MODELS.forEach(function(m,i){
   var o=document.createElement('option');
   o.value=i;
   var use=useLabel(m.tags);
   const chatOk=isChatCapableModel(m);
-  o.textContent='['+m.params+'] '+m.name+' - '+(use||'general')+(chatOk?'':' [NO CHAT]');
-  o.title='Best for: '+(use||'general')+'. '+m.desc+(chatOk?'':' (Not available for chat endpoint)');
+  var upLabel=modelUploadCapabilityLabel(m);
+  o.textContent='['+m.params+'] '+m.name+' - '+(use||'general')+' | '+upLabel+(chatOk?'':' [NO CHAT]');
+  o.title='Best for: '+(use||'general')+'. '+m.desc+' Upload: '+upLabel+(chatOk?'':' (Not available for chat endpoint)');
   o.disabled=!chatOk;
   msel.appendChild(o);
 });
@@ -1191,6 +1201,22 @@ function readFileAsDataURL(file){
   });
 }
 
+async function uploadAttachmentToStorage(kind,file,dataUrl){
+  try{
+    var data=await apiJSON('/api/attachments',{
+      method:'POST',
+      body:{
+        kind:kind,
+        file_name:file.name,
+        data_url:dataUrl
+      }
+    });
+    return data && data.url ? data.url : null;
+  }catch(e){
+    return null;
+  }
+}
+
 async function extractPdfText(file){
   if(!window.pdfjsLib) throw new Error('pdf parser not loaded');
   var buf=await file.arrayBuffer();
@@ -1212,8 +1238,10 @@ async function onImageFileChange(ev){
   if(!file) return;
   try{
     var dataUrl=await readFileAsDataURL(file);
-    pendingImageAttachment={name:file.name,type:file.type||'image/*',dataUrl:dataUrl};
-    toast('Image attached: '+file.name);
+    toast('Uploading image...');
+    var storedUrl=await uploadAttachmentToStorage('image',file,dataUrl);
+    pendingImageAttachment={name:file.name,type:file.type||'image/*',dataUrl:dataUrl,storageUrl:storedUrl||null};
+    toast(storedUrl?('Image attached + stored: '+file.name):('Image attached (local only): '+file.name));
   }catch(e){
     toast('Image attach failed');
   }
@@ -1224,10 +1252,13 @@ async function onPdfFileChange(ev){
   if(!file) return;
   try{
     toast('Reading PDF...');
+    var dataUrl=await readFileAsDataURL(file);
     var text=await extractPdfText(file);
     if(!text){toast('PDF had no readable text');return;}
-    pendingPdfAttachment={name:file.name,text:text};
-    toast('PDF attached: '+file.name);
+    toast('Uploading PDF...');
+    var storedUrl=await uploadAttachmentToStorage('pdf',file,dataUrl);
+    pendingPdfAttachment={name:file.name,text:text,storageUrl:storedUrl||null};
+    toast(storedUrl?('PDF attached + stored: '+file.name):('PDF attached (local only): '+file.name));
   }catch(e){
     toast('PDF attach failed');
   }
@@ -1688,9 +1719,15 @@ async function go(){
   var userDisplayText=txt;
   if(hasPdf){
     userDisplayText=(userDisplayText?userDisplayText+'\n\n':'')+'[PDF attached: '+pendingPdfAttachment.name+']';
+    if(pendingPdfAttachment.storageUrl){
+      userDisplayText+='\n[PDF stored: '+pendingPdfAttachment.storageUrl+']';
+    }
   }
   if(hasImage){
     userDisplayText=(userDisplayText?userDisplayText+'\n':'')+'[Image attached: '+pendingImageAttachment.name+']';
+    if(pendingImageAttachment.storageUrl){
+      userDisplayText+='\n[Image stored: '+pendingImageAttachment.storageUrl+']';
+    }
   }
 
   var userPayloadContent;
