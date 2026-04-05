@@ -2047,7 +2047,10 @@ function addTyp(){
   av.style.cssText='background:var(--bg3);border:1px solid var(--border);color:var(--textd);width:26px;height:26px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:8px;flex-shrink:0';
   var bbl=document.createElement('div');
   bbl.className='typ-bbl';
-  for(var i=0;i<3;i++){var dot=document.createElement('div');dot.className='dot';bbl.appendChild(dot);}
+  var txt=document.createElement('div');
+  txt.style.cssText='font-family:"Share Tech Mono",monospace;font-size:9px;color:var(--textd);letter-spacing:.4px';
+  txt.textContent='AI is thinking, rukjao...';
+  bbl.appendChild(txt);
   wrap.appendChild(av);wrap.appendChild(bbl);
   c.appendChild(wrap);sc();
 }
@@ -2217,12 +2220,84 @@ function updateStreamBubble(msgEl,text){
   sc();
 }
 
+function extractVisibleAssistantText(raw){
+  var s=String(raw||'');
+  var out='';
+  var i=0;
+  var inThink=false;
+  while(i<s.length){
+    if(!inThink){
+      var open=s.indexOf('<think>',i);
+      if(open===-1){
+        out+=s.slice(i);
+        break;
+      }
+      out+=s.slice(i,open);
+      i=open+7;
+      inThink=true;
+    }else{
+      var close=s.indexOf('</think>',i);
+      if(close===-1) break;
+      i=close+8;
+      inThink=false;
+    }
+  }
+  return out;
+}
+
+function sanitizeAssistantOutput(text){
+  var s=String(text||'');
+  s=s.replace(/<think>[\s\S]*?<\/think>/gi,' ');
+  s=s.replace(/<\/?think>/gi,' ');
+  s=s.replace(/\n{3,}/g,'\n\n');
+  return s.trim();
+}
+
+function createSmoothTyper(msgEl){
+  var target='';
+  var shown='';
+  var rafId=0;
+
+  function tick(){
+    var remain=target.length-shown.length;
+    if(remain>0){
+      var step=1;
+      if(remain>240) step=8;
+      else if(remain>120) step=5;
+      else if(remain>60) step=3;
+      else if(remain>20) step=2;
+      shown+=target.slice(shown.length,shown.length+step);
+      updateStreamBubble(msgEl,shown);
+      rafId=requestAnimationFrame(tick);
+      return;
+    }
+    rafId=0;
+  }
+
+  return {
+    setTarget:function(next){
+      target=String(next||'');
+      if(!rafId) rafId=requestAnimationFrame(tick);
+    },
+    flush:function(){
+      shown=target;
+      if(rafId){
+        cancelAnimationFrame(rafId);
+        rafId=0;
+      }
+      updateStreamBubble(msgEl,shown);
+    }
+  };
+}
+
 async function readStreamingAssistantReply(res,msgEl){
   if(!res || !res.body || !res.body.getReader) return '';
   var reader=res.body.getReader();
   var decoder=new TextDecoder();
   var buffer='';
-  var fullText='';
+  var rawText='';
+  var typer=createSmoothTyper(msgEl);
+  var hadVisible=false;
 
   while(true){
     var part=await reader.read();
@@ -2241,13 +2316,19 @@ async function readStreamingAssistantReply(res,msgEl){
           || (parsed && parsed.choices && parsed.choices[0] && parsed.choices[0].message && parsed.choices[0].message.content)
           || '';
         if(delta){
-          fullText+=delta;
-          updateStreamBubble(msgEl,fullText);
+          rawText+=delta;
+          var visible=extractVisibleAssistantText(rawText);
+          if(visible.trim()){
+            hadVisible=true;
+            typer.setTarget(visible);
+          }
         }
       }catch(e){}
     });
   }
-  return fullText;
+  if(!hadVisible) typer.setTarget('');
+  typer.flush();
+  return sanitizeAssistantOutput(extractVisibleAssistantText(rawText));
 }
 
 async function go(){
@@ -2341,6 +2422,7 @@ async function go(){
             return {model:cm,ok:false,error:'ERROR '+res.status+': '+((data && (data.detail||data.message||data.error))||JSON.stringify(data))};
           }
           var reply=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'(empty)';
+          reply=sanitizeAssistantOutput(reply);
           return {model:cm,ok:true,reply:appendSourceCitations(reply,lastWebSnippetsUsed)};
         }catch(e){
           return {model:cm,ok:false,error:'NETWORK ERROR: '+e.message};
@@ -2380,6 +2462,7 @@ async function go(){
         }
       } else {
         var streamEl=addMsg('ass','',m.name,{webUsed:lastWebSnippetsUsed.length>0,messageId:null});
+        updateStreamBubble(streamEl,'AI is thinking, rukjao...');
         var ctype=String(res.headers.get('content-type')||'').toLowerCase();
         var reply='';
         if(ctype.includes('text/event-stream')){
@@ -2388,9 +2471,11 @@ async function go(){
           var dataOk={};
           try{dataOk=await res.json();}catch(_){dataOk={};}
           reply=(dataOk.choices&&dataOk.choices[0]&&dataOk.choices[0].message&&dataOk.choices[0].message.content)||'(empty)';
+          reply=sanitizeAssistantOutput(reply);
           updateStreamBubble(streamEl,reply);
         }
         if(!reply) reply='(empty)';
+        reply=sanitizeAssistantOutput(reply);
         reply=appendSourceCitations(reply,lastWebSnippetsUsed);
         updateStreamBubble(streamEl,reply);
         hist.push({role:'assistant',content:reply});
