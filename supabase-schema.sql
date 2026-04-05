@@ -46,10 +46,14 @@ create index if not exists messages_conversation_idx on messages(conversation_id
 create table if not exists global_stats (
   id int primary key default 1,
   total_calls bigint not null default 0,
+  tavily_calls bigint not null default 0,
   model_counts jsonb not null default '{}'::jsonb,
   updated_at timestamptz not null default now(),
   constraint global_stats_singleton check (id = 1)
 );
+
+alter table global_stats
+add column if not exists tavily_calls bigint not null default 0;
 
 insert into global_stats (id) values (1)
 on conflict (id) do nothing;
@@ -79,6 +83,28 @@ as $$
     updated_at = now()
   where id = 1
   returning global_stats.total_calls, global_stats.model_counts, global_stats.updated_at;
+$$;
+
+create or replace function increment_tavily_call()
+returns table (
+  total_calls bigint,
+  tavily_calls bigint,
+  model_counts jsonb,
+  updated_at timestamptz
+)
+language sql
+security definer
+set search_path = public
+as $$
+  insert into global_stats (id) values (1)
+  on conflict (id) do nothing;
+
+  update global_stats
+  set
+    tavily_calls = global_stats.tavily_calls + 1,
+    updated_at = now()
+  where id = 1
+  returning global_stats.total_calls, global_stats.tavily_calls, global_stats.model_counts, global_stats.updated_at;
 $$;
 
 create table if not exists memory_chunks (

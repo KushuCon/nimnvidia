@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>NIM Chat</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 <style>
 :root{
   --g:#76b900;--g2:#4a7400;--g3:#2a4400;
@@ -463,6 +464,8 @@ textarea#ti::placeholder{color:var(--textdd)}
     <span class="slbl">M:</span><span class="sval" id="sM">0</span>
     <span class="sdiv">|</span>
     <span class="slbl">CALLS:</span><span class="sval" id="sC">0</span>
+    <span class="sdiv">|</span>
+    <span class="slbl">WEB:</span><span class="sval" id="sW">0</span>
   </div>
   <button class="logout-top" type="button" id="logoutBtnTop" onclick="authLogout()">LOGOUT</button>
 </div>
@@ -476,6 +479,7 @@ textarea#ti::placeholder{color:var(--textdd)}
   <div class="mbadge" id="mbadge"><span style="color:var(--text)">Select a model</span></div>
   <div class="mem-row">
     <button type="button" id="memScopeBtn" class="mem-pill" onclick="toggleMemoryScope()">Memory: <strong>Current Chat</strong></button>
+    <button type="button" id="ragChatBtn" class="mem-pill" onclick="toggleChatRag()">RAG: <strong>ON</strong></button>
   </div>
   <div id="authGate" class="auth-shell">
     <div class="auth-box" id="authBox">
@@ -516,11 +520,16 @@ textarea#ti::placeholder{color:var(--textdd)}
     <button class="sbtn" id="sbtn" onclick="go()">▶ SEND</button>
   </div>
   <div class="tbar">
+    <button class="tbtn" type="button" onclick="triggerImageUpload()">IMG</button>
+    <button class="tbtn" type="button" onclick="triggerPdfUpload()">PDF+</button>
     <button class="tbtn" onclick="xpdf()">⬇ PDF</button>
     <button class="tbtn del" onclick="clr()">✕ CLEAR</button>
     <span class="cc" id="cc">0 chars</span>
   </div>
 </div>
+
+<input id="imgInput" type="file" accept="image/*" style="display:none" onchange="onImageFileChange(event)">
+<input id="pdfInput" type="file" accept="application/pdf" style="display:none" onchange="onPdfFileChange(event)">
 
 <div class="toast" id="toast"></div>
 
@@ -824,11 +833,63 @@ let activeMessagesCache=[];
 const IS_ANDROID=typeof navigator!=='undefined' && /Android/i.test(navigator.userAgent||'');
 const BOOT_CACHE_KEY='nimBootV1';
 const GLOBAL_STATS_CACHE_KEY='nimGlobalStatsV1';
+const CHAT_RAG_TOGGLES_KEY='nimChatRagTogglesV1';
 const BOOT_MIN_DELAY=260;
 const RAG_SETTINGS_KEY='nimRagSettingsV1';
 const RECENT_WINDOW_SIZE=18;
 let ragScope='current';
-let globalStats={total:0,models:{}};
+let globalStats={total:0,tavily:0,models:{}};
+let chatRagToggles={};
+let newChatRagEnabled=true;
+let pendingImageAttachment=null;
+let pendingPdfAttachment=null;
+let lastWebSnippetsUsed=[];
+
+const MODEL_CUTOFFS={
+  'deepseek-ai/deepseek-v3.1':'2025-07-01',
+  'deepseek-ai/deepseek-v3.1-terminus':'2025-07-01',
+  'deepseek-ai/deepseek-v3.2':'2025-10-01',
+  'deepseek-ai/deepseek-v3':'2024-07-01',
+  'qwen/qwen3.5-122b-a10b':'2025-04-01',
+  'qwen/qwen3-coder-480b-a35b-instruct':'2025-04-01',
+  'mistralai/magistral-small-2506':'2025-01-01',
+  'mistralai/mistral-small-3.1-24b-instruct-2503':'2025-01-01',
+  'mistralai/mistral-medium-3-instruct':'2025-01-01',
+  'mistralai/mistral-large-3-675b-instruct-2512':'2025-01-01',
+  'mistralai/devstral-2-123b-instruct-2512':'2025-01-01',
+  'google/gemma-3-27b-it':'2025-01-01',
+  'google/gemma-3n-e2b-it':'2025-01-01',
+  'google/gemma-3n-e4b-it':'2025-01-01',
+  'microsoft/phi-4-mini-flash-reasoning':'2024-06-01',
+  'microsoft/phi-4-multimodal-instruct':'2024-06-01',
+  'meta/llama-4-scout-17b-16e-instruct':'2025-01-01',
+  'meta/llama-4-maverick-17b-128e-instruct':'2025-01-01',
+  'meta/llama-guard-4-12b':'2025-01-01',
+  'nvidia/nemotron-3-super-120b-a12b':'2025-01-01',
+  'nvidia/cosmos-reason1-7b':'2025-01-01',
+  'nvidia/cosmos-transfer1-7b':'2025-01-01',
+  'nvidia/cosmos-transfer2.5-2b':'2025-01-01',
+  'nvidia/cosmos-predict1-5b':'2025-01-01',
+  'moonshotai/kimi-k2-thinking':'2025-01-01',
+  'moonshotai/kimi-k2-instruct':'2025-01-01',
+  'moonshotai/kimi-k2-instruct-0905':'2025-01-01',
+  'moonshotai/kimi-k2.5':'2024-04-01',
+  'moonshotai/kimi-k2':'2023-02-01',
+  'minimaxai/minimax-m2.1':'2025-01-01',
+  'stepfun-ai/step-3.5-flash':'2025-01-01',
+  'ibm/granite-3.3-8b-instruct':'2024-06-01',
+  'z-ai/glm-4.7':'2025-01-01'
+};
+
+const WEB_TRIGGER_TERMS=[
+  'latest','today','current','news','new','recent','update','updated','just now','now',
+  'this week','this month','this year','release','released','launch','patch','version',
+  'price','stock','score','result','winner','weather','breaking'
+];
+
+if(typeof window!=='undefined' && window.pdfjsLib && window.pdfjsLib.GlobalWorkerOptions){
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+}
 
 function setBodyState(){
   document.body.classList.toggle('auth-locked',!authUser);
@@ -898,6 +959,41 @@ function loadRagSettings(){
   renderMemoryScope();
 }
 
+function loadChatRagToggles(){
+  try{chatRagToggles=JSON.parse(localStorage.getItem(CHAT_RAG_TOGGLES_KEY)||'{}')||{}}catch(e){chatRagToggles={};}
+  renderChatRagToggle();
+}
+
+function saveChatRagToggles(){
+  try{localStorage.setItem(CHAT_RAG_TOGGLES_KEY,JSON.stringify(chatRagToggles||{}));}catch(e){}
+}
+
+function isRagEnabledForActiveChat(){
+  if(!activeConversationId) return !!newChatRagEnabled;
+  if(Object.prototype.hasOwnProperty.call(chatRagToggles,activeConversationId)) return !!chatRagToggles[activeConversationId];
+  return true;
+}
+
+function renderChatRagToggle(){
+  var btn=document.getElementById('ragChatBtn');
+  if(!btn) return;
+  var on=isRagEnabledForActiveChat();
+  btn.innerHTML='RAG: <strong>'+(on?'ON':'OFF')+'</strong>';
+}
+
+function toggleChatRag(){
+  var id=activeConversationId||'__new__';
+  var now=!isRagEnabledForActiveChat();
+  if(id!=='__new__'){
+    chatRagToggles[id]=now;
+    saveChatRagToggles();
+  }else{
+    newChatRagEnabled=now;
+  }
+  renderChatRagToggle();
+  toast('RAG for this chat: '+(now?'ON':'OFF'));
+}
+
 function saveRagSettings(){
   try{localStorage.setItem(RAG_SETTINGS_KEY,JSON.stringify({scope:ragScope}));}catch(e){}
 }
@@ -959,6 +1055,7 @@ function applyBootPayload(payload){
     activeMessagesCache=[];
     renderConversationSelect();
     setAuthUI();
+    renderChatRagToggle();
     resetChatUI();
     clearBootCache();
     return;
@@ -968,6 +1065,7 @@ function applyBootPayload(payload){
   convList=payload.conversations||[];
   activeConversationId=payload.activeConversationId||null;
   setAuthUI();
+  renderChatRagToggle();
   renderConversationSelect();
   fillChatFromMessages(payload.messages||[]);
   saveBootCache();
@@ -996,6 +1094,154 @@ async function fetchRagSnippets(queryText){
   }
 }
 
+function getModelCutoffDate(modelId){
+  if(MODEL_CUTOFFS[modelId]) return new Date(MODEL_CUTOFFS[modelId]);
+  const id=String(modelId||'').toLowerCase();
+  if(id.includes('deepseek')) return new Date('2025-07-01');
+  if(id.includes('qwen')) return new Date('2025-04-01');
+  if(id.includes('mistral')) return new Date('2025-01-01');
+  if(id.includes('gemma')) return new Date('2025-01-01');
+  if(id.includes('phi-4')) return new Date('2024-06-01');
+  if(id.includes('llama-4') || id.includes('llama-guard-4')) return new Date('2025-01-01');
+  if(id.includes('nvidia/')) return new Date('2025-01-01');
+  if(id.includes('kimi') || id.includes('moonshotai') || id.includes('minimax') || id.includes('step-3.5')) return new Date('2025-01-01');
+  return new Date('2025-01-01');
+}
+
+function extractYears(text){
+  const years=[];
+  String(text||'').replace(/\b(20\d{2})\b/g,function(_,y){years.push(Number(y));return _;});
+  return years;
+}
+
+function shouldUseWebRag(queryText,modelId,memorySnippets){
+  const q=String(queryText||'').toLowerCase();
+  const cutoff=getModelCutoffDate(modelId);
+  const cutoffYear=cutoff.getUTCFullYear();
+  const years=extractYears(q);
+  const hasFutureYear=years.some(function(y){return y>cutoffYear;});
+  const hasCurrentYear=years.some(function(y){return y>=new Date().getUTCFullYear();});
+  const hasFreshTerm=WEB_TRIGGER_TERMS.some(function(t){return q.includes(t);});
+  const topMemoryScore=(memorySnippets||[]).reduce(function(mx,s){
+    return Math.max(mx,Number(s&&s.score)||0);
+  },0);
+
+  if(hasFutureYear || hasCurrentYear) return {enabled:true,reason:'date-after-cutoff'};
+  if(hasFreshTerm && topMemoryScore<4.5) return {enabled:true,reason:'fresh-query'};
+  return {enabled:false,reason:'memory-sufficient'};
+}
+
+async function fetchWebSnippets(queryText,modelId,reason){
+  if(!queryText) return [];
+  try{
+    var data=await apiJSON('/api/web-context',{
+      method:'POST',
+      body:{query:queryText,model_id:modelId,reason:reason,limit:4}
+    });
+    return data.snippets||[];
+  }catch(e){
+    return [];
+  }
+}
+
+function buildWebSystemMessage(snippets){
+  if(!snippets || !snippets.length) return null;
+  var lines=snippets.map(function(s,idx){
+    return (idx+1)+'. '+(s.title||'Web source')+' | '+(s.url||'')+'\n'+(s.text||'');
+  });
+  return {
+    role:'system',
+    content:'Live web context for freshness-sensitive queries. Prioritize these sources when answering time-sensitive questions and cite URLs from the provided snippets:\n'+lines.join('\n\n')
+  };
+}
+
+function appendSourceCitations(answerText,snippets){
+  var base=String(answerText||'').trim();
+  var list=(snippets||[])
+    .filter(function(s){return s && s.url;})
+    .slice(0,4)
+    .map(function(s,idx){
+      return (idx+1)+'. '+(s.title||s.url)+' - '+s.url;
+    });
+  if(!list.length) return base;
+  if(/\bsources?:/i.test(base)) return base;
+  return base+'\n\nSources:\n'+list.join('\n');
+}
+
+function isVisionCapableModel(m){
+  return !!(m && Array.isArray(m.tags) && m.tags.includes('vision'));
+}
+
+function triggerImageUpload(){
+  var el=document.getElementById('imgInput');
+  if(el) el.click();
+}
+
+function triggerPdfUpload(){
+  var el=document.getElementById('pdfInput');
+  if(el) el.click();
+}
+
+function readFileAsDataURL(file){
+  return new Promise(function(resolve,reject){
+    var fr=new FileReader();
+    fr.onload=function(){resolve(String(fr.result||''));};
+    fr.onerror=function(){reject(new Error('file read failed'));};
+    fr.readAsDataURL(file);
+  });
+}
+
+async function extractPdfText(file){
+  if(!window.pdfjsLib) throw new Error('pdf parser not loaded');
+  var buf=await file.arrayBuffer();
+  var pdf=await window.pdfjsLib.getDocument({data:buf}).promise;
+  var maxPages=Math.min(pdf.numPages,8);
+  var chunks=[];
+  for(var p=1;p<=maxPages;p++){
+    var page=await pdf.getPage(p);
+    var tc=await page.getTextContent();
+    var txt=tc.items.map(function(it){return it.str||'';}).join(' ');
+    if(txt.trim()) chunks.push('Page '+p+': '+txt.trim());
+    if(chunks.join('\n').length>12000) break;
+  }
+  return chunks.join('\n').slice(0,12000);
+}
+
+async function onImageFileChange(ev){
+  var file=ev && ev.target && ev.target.files ? ev.target.files[0] : null;
+  if(!file) return;
+  try{
+    var dataUrl=await readFileAsDataURL(file);
+    pendingImageAttachment={name:file.name,type:file.type||'image/*',dataUrl:dataUrl};
+    toast('Image attached: '+file.name);
+  }catch(e){
+    toast('Image attach failed');
+  }
+}
+
+async function onPdfFileChange(ev){
+  var file=ev && ev.target && ev.target.files ? ev.target.files[0] : null;
+  if(!file) return;
+  try{
+    toast('Reading PDF...');
+    var text=await extractPdfText(file);
+    if(!text){toast('PDF had no readable text');return;}
+    pendingPdfAttachment={name:file.name,text:text};
+    toast('PDF attached: '+file.name);
+  }catch(e){
+    toast('PDF attach failed');
+  }
+}
+
+function clearPendingAttachments(){
+  pendingImageAttachment=null;
+  pendingPdfAttachment=null;
+  var img=document.getElementById('imgInput');
+  var pdf=document.getElementById('pdfInput');
+  if(img) img.value='';
+  if(pdf) pdf.value='';
+}
+
 function buildRagSystemMessage(snippets){
   if(!snippets || !snippets.length) return null;
   var lines=snippets.map(function(s,idx){
@@ -1007,11 +1253,33 @@ function buildRagSystemMessage(snippets){
   };
 }
 
-async function buildPromptMessages(currentInput){
-  var recent=hist.slice(-RECENT_WINDOW_SIZE);
+async function buildPromptMessages(currentInput,modelId,userContentOverride){
+  if(!isRagEnabledForActiveChat()){
+    lastWebSnippetsUsed=[];
+    var onlyRecent=hist.slice(-RECENT_WINDOW_SIZE).map(function(m){
+      return {role:m.role,content:m.content};
+    });
+    if(userContentOverride && onlyRecent.length && onlyRecent[onlyRecent.length-1].role==='user'){
+      onlyRecent[onlyRecent.length-1]={role:'user',content:userContentOverride};
+    }
+    return onlyRecent;
+  }
+
+  var recent=hist.slice(-RECENT_WINDOW_SIZE).map(function(m){
+    return {role:m.role,content:m.content};
+  });
+  if(userContentOverride && recent.length && recent[recent.length-1].role==='user'){
+    recent[recent.length-1]={role:'user',content:userContentOverride};
+  }
+
   var snippets=await fetchRagSnippets(currentInput);
   var ragMsg=buildRagSystemMessage(snippets);
+  var webRoute=shouldUseWebRag(currentInput,modelId,snippets);
+  var webSnippets=webRoute.enabled ? await fetchWebSnippets(currentInput,modelId,webRoute.reason) : [];
+  lastWebSnippetsUsed=webSnippets.slice(0,6);
+  var webMsg=buildWebSystemMessage(webSnippets);
   var out=[];
+  if(webMsg) out.push(webMsg);
   if(ragMsg) out.push(ragMsg);
   Array.prototype.push.apply(out,recent);
   return out;
@@ -1161,6 +1429,7 @@ async function loadConversation(id){
   activeConversationId=id;
   var data=await apiJSON('/api/messages?conversation_id='+encodeURIComponent(id));
   fillChatFromMessages(data.messages||[]);
+  renderChatRagToggle();
   renderConversationSelect();
   saveBootCache();
 }
@@ -1241,8 +1510,9 @@ function loadGlobalStatsCache(){
 function saveGlobalStatsCache(s){try{localStorage.setItem(GLOBAL_STATS_CACHE_KEY,JSON.stringify(s))}catch(e){}}
 function normalizeStats(data){
   const total=Number(data&&data.total)||0;
+  const tavily=Number(data&&data.tavily)||0;
   const models=data&&data.models&&typeof data.models==='object'?data.models:{};
-  return {total,models};
+  return {total,tavily,models};
 }
 function applyGlobalStats(data){
   globalStats=normalizeStats(data);
@@ -1266,12 +1536,14 @@ async function recCall(id){
   }catch(e){}
 }
 function rnStats(){
-  const s=globalStats||{total:0,models:{}};
+  const s=globalStats||{total:0,tavily:0,models:{}};
   const sM=document.getElementById('sM');
   const sC=document.getElementById('sC');
+  const sW=document.getElementById('sW');
   const wnum=document.getElementById('wnum');
   if(sM) sM.textContent=Object.keys(s.models).length;
   if(sC) sC.textContent=s.total;
+  if(sW) sW.textContent=s.tavily;
   if(wnum) wnum.textContent=MODELS.length;
 }
 rnStats();
@@ -1302,7 +1574,7 @@ let hist=[],msgN=0;
 
 function hwlc(){var w=document.getElementById('wlc');if(w)w.remove();}
 
-function addMsg(role,content,mn){
+function addMsg(role,content,mn,meta){
   hwlc();
   var c=document.getElementById('msgs');
   var d=document.createElement('div');
@@ -1316,7 +1588,9 @@ function addMsg(role,content,mn){
   if(role==='ass'&&mn){
     var tg=document.createElement('div');
     tg.className='mtag';
-    tg.textContent='▸ '+mn;
+    var bits=['▸ '+mn];
+    if(meta && meta.webUsed) bits.push('WEB');
+    tg.textContent=bits.join(' · ');
     bbl.appendChild(tg);
   }
   var inner=document.createElement('div');
@@ -1387,7 +1661,9 @@ async function postChat(payload){
 async function go(){
   var ta=document.getElementById('ti');
   var txt=ta.value.trim();
-  if(!txt)return;
+  var hasImage=!!pendingImageAttachment;
+  var hasPdf=!!pendingPdfAttachment;
+  if(!txt && !hasImage && !hasPdf)return;
 
   if(!authUser){
     addSys('Login required to send and save chats.',true);
@@ -1399,25 +1675,56 @@ async function go(){
     addSys('Selected model is task-specific and not chat-capable. Choose a model without [NO CHAT].',true);
     return;
   }
+  if(hasImage && !isVisionCapableModel(m)){
+    addSys('Selected model does not support vision input. Choose a vision-capable model for image upload.',true);
+    return;
+  }
   try{await ensureConversation();}
   catch(e){
     addSys('Could not create chat session: '+e.message,true);
     return;
   }
 
+  var userDisplayText=txt;
+  if(hasPdf){
+    userDisplayText=(userDisplayText?userDisplayText+'\n\n':'')+'[PDF attached: '+pendingPdfAttachment.name+']';
+  }
+  if(hasImage){
+    userDisplayText=(userDisplayText?userDisplayText+'\n':'')+'[Image attached: '+pendingImageAttachment.name+']';
+  }
+
+  var userPayloadContent;
+  if(hasImage){
+    var blocks=[];
+    blocks.push({type:'text',text:txt||'Please analyze the attached image.'});
+    if(hasPdf){
+      blocks.push({
+        type:'text',
+        text:'Useful extracted text from attached PDF:\n'+pendingPdfAttachment.text
+      });
+    }
+    blocks.push({type:'image_url',image_url:{url:pendingImageAttachment.dataUrl}});
+    userPayloadContent=blocks;
+  }else{
+    userPayloadContent=txt;
+    if(hasPdf){
+      userPayloadContent=(txt?txt+'\n\n':'')+'Useful extracted text from attached PDF:\n'+pendingPdfAttachment.text;
+    }
+  }
+
   ta.value='';ar(ta);
   document.getElementById('cc').textContent='0 chars';
   document.getElementById('sbtn').disabled=true;
 
-  addMsg('user',txt,null);
-  hist.push({role:'user',content:txt});
-  activeMessagesCache.push({role:'user',content:txt,model_id:null,created_at:new Date().toISOString()});
+  addMsg('user',userDisplayText||txt,null);
+  hist.push({role:'user',content:userDisplayText||txt});
+  activeMessagesCache.push({role:'user',content:userDisplayText||txt,model_id:null,created_at:new Date().toISOString()});
   saveBootCache();
-  try{await saveMessage('user',txt,null);}catch(e){addSys('Warning: user message not saved.',true);}
+  try{await saveMessage('user',userDisplayText||txt,null);}catch(e){addSys('Warning: user message not saved.',true);}
   addTyp();
 
   try{
-    var promptMsgs=await buildPromptMessages(txt);
+    var promptMsgs=await buildPromptMessages(txt||userDisplayText,m.id,userPayloadContent);
     var payload={model:m.id,messages:promptMsgs,max_tokens:4096,temperature:0.7,stream:false};
     var res=await postChat(payload);
     var data=await res.json();
@@ -1437,13 +1744,15 @@ async function go(){
       }
     } else {
       var reply=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'(empty)';
+      reply=appendSourceCitations(reply,lastWebSnippetsUsed);
       hist.push({role:'assistant',content:reply});
-      addMsg('ass',reply,m.name);
+      addMsg('ass',reply,m.name,{webUsed:lastWebSnippetsUsed.length>0});
       activeMessagesCache.push({role:'assistant',content:reply,model_id:m.id,created_at:new Date().toISOString()});
       saveBootCache();
       try{await saveMessage('assistant',reply,m.id);}catch(e){addSys('Warning: assistant message not saved.',true);}
       recCall(m.id).catch(function(){});
       loadConversations(false).catch(function(){});
+      clearPendingAttachments();
     }
   }catch(e){
     rmTyp();addSys('NETWORK ERROR: '+e.message,true);
@@ -1529,11 +1838,15 @@ function clr(){
     newChat();
     return;
   }
+  clearPendingAttachments();
   resetChatUI();
 }
 
 function newChat(){
   activeConversationId=null;
+  newChatRagEnabled=true;
+  renderChatRagToggle();
+  clearPendingAttachments();
   resetChatUI();
   var csel=document.getElementById('csel');
   if(csel)csel.value='';
@@ -1557,6 +1870,7 @@ function sc(){var c=document.getElementById('msgs');c.scrollTop=c.scrollHeight;}
 function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(function(){t.style.display='none';},3000);}
 
 loadRagSettings();
+loadChatRagToggles();
 initAuth();
 </script>
 </body>
