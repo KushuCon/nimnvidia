@@ -131,6 +131,31 @@ body.loading::after{z-index:9988}
   font-family:'Share Tech Mono',monospace;font-size:9px;padding:6px 8px;border-radius:var(--r);cursor:pointer;
 }
 .drawer-list{display:flex;flex-direction:column;gap:8px;overflow-y:auto;flex:1;padding-right:2px}
+.drawer-tags{
+  border:1px solid var(--border);background:var(--bg3);border-radius:var(--r);
+  padding:8px;display:flex;flex-direction:column;gap:8px;
+}
+.drawer-tags-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.drawer-tags-title{font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:1px;color:var(--textd);text-transform:uppercase}
+.drawer-tags-row{display:flex;gap:6px;align-items:center}
+.drawer-tags-input{
+  flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);
+  color:var(--text);font-family:'Share Tech Mono',monospace;font-size:9px;padding:6px 8px;min-width:0;outline:none;
+}
+.drawer-tags-input:focus{border-color:var(--g2)}
+.drawer-tags-btn{
+  background:#0d1a08;border:1px solid var(--g2);color:var(--g);
+  font-family:'Share Tech Mono',monospace;font-size:9px;padding:6px 9px;border-radius:var(--r);cursor:pointer;white-space:nowrap;
+}
+.drawer-tags-btn:active{border-color:var(--g);color:var(--white)}
+.drawer-tag-list{display:flex;flex-wrap:wrap;gap:5px}
+.tag-pill{
+  display:inline-flex;align-items:center;gap:4px;padding:3px 7px;border-radius:999px;
+  background:#0a120a;border:1px solid var(--border2);color:var(--g);font-family:'Share Tech Mono',monospace;font-size:8px;
+}
+.tag-pill button{
+  background:transparent;border:0;color:var(--textd);cursor:pointer;padding:0;font:inherit;line-height:1;
+}
 .drawer-item{
   text-align:left;background:var(--bg3);border:1px solid var(--border);color:var(--text);
   padding:10px 10px;border-radius:var(--r);cursor:pointer;display:flex;flex-direction:column;gap:4px;
@@ -139,11 +164,18 @@ body.loading::after{z-index:9988}
 .drawer-item-head{display:flex;align-items:center;gap:8px}
 .drawer-item-title{font-family:'Share Tech Mono',monospace;font-size:10px}
 .drawer-item-meta{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--textdd)}
+.drawer-item-tags{display:flex;flex-wrap:wrap;gap:4px}
+.drawer-item-actions{display:flex;gap:6px;align-items:center;margin-left:auto;flex-shrink:0}
 .drawer-edit{
-  margin-left:auto;background:transparent;border:1px solid var(--border);color:var(--textd);
+  background:transparent;border:1px solid var(--border);color:var(--textd);
   border-radius:2px;font-family:'Share Tech Mono',monospace;font-size:8px;padding:3px 6px;cursor:pointer;
 }
 .drawer-edit:active{border-color:var(--g2);color:var(--g)}
+.drawer-del{
+  background:transparent;border:1px solid #5a1a1a;color:#cc6666;
+  border-radius:2px;font-family:'Share Tech Mono',monospace;font-size:8px;padding:3px 6px;cursor:pointer;
+}
+.drawer-del:active{border-color:var(--red);color:var(--red)}
 .drawer-empty{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--textdd);line-height:1.7;padding:8px 0}
 
 /* HEADER */
@@ -349,6 +381,21 @@ select#msel option{background:#0a120a;color:var(--text)}
 .msg.user .bbl{background:#0c1f06;border:1px solid var(--g2);color:var(--white);border-top-right-radius:0}
 .msg.ass .bbl{background:#070d07;border:1px solid var(--border);color:var(--text);border-top-left-radius:0}
 .mtag{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--textd);margin-bottom:4px;letter-spacing:.5px}
+.msg-actions{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.msg-action{
+  background:transparent;border:1px solid var(--border2);color:var(--textd);
+  font-family:'Share Tech Mono',monospace;font-size:8px;padding:3px 6px;border-radius:2px;cursor:pointer;
+}
+.msg-action.on{border-color:var(--g);color:var(--g)}
+.msg-action:active{border-color:var(--g2);color:var(--g)}
+.cmp-wrap{margin-top:8px;border:1px solid var(--border2);border-radius:var(--r);background:#081008;padding:8px}
+.cmp-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.cmp-title{font-family:'Orbitron',sans-serif;font-size:10px;letter-spacing:1.5px;color:var(--g)}
+.cmp-sub{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--textdd)}
+.cmp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
+.cmp-card{border:1px solid var(--border);border-radius:var(--r);background:#050905;padding:8px}
+.cmp-model{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--g);margin-bottom:6px}
+.cmp-text{font-size:12px;line-height:1.55;color:var(--text);white-space:pre-wrap;word-break:break-word}
 .bbl pre{background:#0a1408;border:1px solid var(--border);padding:7px;border-radius:2px;overflow-x:auto;font-family:'Share Tech Mono',monospace;font-size:11px;color:#a0c880;margin:5px 0;white-space:pre-wrap;word-break:break-all}
 .bbl code{font-family:'Share Tech Mono',monospace;font-size:11px;background:#0e180a;padding:1px 4px;border-radius:2px;color:var(--g)}
 .bbl strong{color:var(--white)}
@@ -446,6 +493,17 @@ textarea#ti::placeholder{color:var(--textdd)}
       <button class="drawer-close" type="button" onclick="closeDrawer()">✕</button>
     </div>
   </div>
+  <div class="drawer-tags">
+    <div class="drawer-tags-head">
+      <div class="drawer-tags-title">Conversation Tags</div>
+      <div class="drawer-sub" id="drawerTagHint">Select a chat to edit tags</div>
+    </div>
+    <div class="drawer-tags-row">
+      <input id="drawerTagInput" class="drawer-tags-input" type="text" placeholder="tag1, tag2">
+      <button class="drawer-tags-btn" type="button" onclick="saveDrawerTags()">SAVE</button>
+    </div>
+    <div class="drawer-tag-list" id="drawerTagList"></div>
+  </div>
   <div class="drawer-list" id="chatList"></div>
 </aside>
 
@@ -480,6 +538,7 @@ textarea#ti::placeholder{color:var(--textdd)}
   <div class="mem-row">
     <button type="button" id="memScopeBtn" class="mem-pill" onclick="toggleMemoryScope()">Memory: <strong>Current Chat</strong></button>
     <button type="button" id="ragChatBtn" class="mem-pill" onclick="toggleChatRag()">RAG: <strong>ON</strong></button>
+    <button type="button" id="compareBtn" class="mem-pill" onclick="toggleCompareMode()">Compare: <strong>OFF</strong></button>
   </div>
   <div id="authGate" class="auth-shell">
     <div class="auth-box" id="authBox">
@@ -522,6 +581,7 @@ textarea#ti::placeholder{color:var(--textdd)}
   <div class="tbar">
     <button class="tbtn" type="button" onclick="triggerImageUpload()">IMG</button>
     <button class="tbtn" type="button" onclick="triggerPdfUpload()">PDF+</button>
+    <button class="tbtn" type="button" onclick="xmd()">⬇ MD</button>
     <button class="tbtn" onclick="xpdf()">⬇ PDF</button>
     <button class="tbtn del" onclick="clr()">✕ CLEAR</button>
     <span class="cc" id="cc">0 chars</span>
@@ -851,9 +911,13 @@ let ragScope='current';
 let globalStats={total:0,tavily:0,models:{}};
 let chatRagToggles={};
 let newChatRagEnabled=true;
+let compareMode=false;
 let pendingImageAttachment=null;
 let pendingPdfAttachment=null;
 let lastWebSnippetsUsed=[];
+let pendingDeletedConversation=null;
+let pendingDeleteUndoTimer=null;
+let toastHideTimer=null;
 
 const MODEL_CUTOFFS={
   'deepseek-ai/deepseek-v3.1':'2025-07-01',
@@ -1022,6 +1086,91 @@ function toggleMemoryScope(){
   toast('Memory scope: '+(ragScope==='all'?'All Chats':'Current Chat'));
 }
 
+function getActiveConversation(){
+  if(!activeConversationId) return null;
+  return (convList||[]).find(function(c){return c.id===activeConversationId;})||null;
+}
+
+function normalizeTagList(value){
+  var raw=Array.isArray(value)
+    ? value
+    : String(value||'').split(',');
+  var out=[];
+  var seen={};
+  raw.forEach(function(tag){
+    var clean=String(tag||'').trim().replace(/^#+/,'').replace(/\s+/g,' ').slice(0,24);
+    if(!clean) return;
+    var key=clean.toLowerCase();
+    if(seen[key]) return;
+    seen[key]=true;
+    out.push(clean);
+  });
+  return out;
+}
+
+function renderCompareMode(){
+  var btn=document.getElementById('compareBtn');
+  if(!btn) return;
+  btn.innerHTML='Compare: <strong>'+(compareMode?'ON':'OFF')+'</strong>';
+}
+
+function toggleCompareMode(){
+  compareMode=!compareMode;
+  renderCompareMode();
+  toast('Compare mode: '+(compareMode?'ON':'OFF'));
+}
+
+function renderDrawerTagEditor(){
+  var input=document.getElementById('drawerTagInput');
+  var hint=document.getElementById('drawerTagHint');
+  var list=document.getElementById('drawerTagList');
+  if(!input || !hint || !list) return;
+  var convo=getActiveConversation();
+  if(!convo){
+    input.value='';
+    input.disabled=true;
+    hint.textContent='Select a chat to edit tags';
+    list.innerHTML='';
+    return;
+  }
+  input.disabled=false;
+  var tags=Array.isArray(convo.tags) ? convo.tags : normalizeTagList(convo.tags||'');
+  input.value=tags.join(', ');
+  hint.textContent='Editing @'+(convo.title||'New Chat');
+  list.innerHTML='';
+  tags.forEach(function(tag){
+    var pill=document.createElement('span');
+    pill.className='tag-pill';
+    pill.appendChild(document.createTextNode(tag));
+    var btn=document.createElement('button');
+    btn.type='button';
+    btn.textContent='×';
+    btn.onclick=function(e){
+      e.stopPropagation();
+      var next=tags.filter(function(t){return t!==tag;});
+      saveConversationTags(next);
+    };
+    pill.appendChild(btn);
+    list.appendChild(pill);
+  });
+}
+
+async function saveConversationTags(tagsOverride){
+  if(!authUser || !activeConversationId) return;
+  var convo=getActiveConversation();
+  if(!convo) return;
+  var next=normalizeTagList(tagsOverride !== undefined ? tagsOverride : document.getElementById('drawerTagInput').value);
+  try{
+    await apiJSON('/api/conversations',{method:'PATCH',body:{id:activeConversationId,tags:next}});
+    await loadConversations(false);
+    renderConversationSelect();
+    renderDrawerTagEditor();
+    toast(next.length ? 'Tags updated' : 'Tags cleared');
+  }catch(e){
+    toast('Tag update failed: '+((e.data&&e.data.error)||e.message));
+  }
+}
+
 function loadBootCache(){
   try{return JSON.parse(localStorage.getItem(BOOT_CACHE_KEY)||'null');}
   catch(e){return null;}
@@ -1032,7 +1181,7 @@ function saveBootCache(){
   const payload={
     user:{id:authUser.id,username:authUser.username},
     conversations:(convList||[]).slice(0,80).map(function(c){
-      return {id:c.id,title:c.title,created_at:c.created_at,updated_at:c.updated_at};
+      return {id:c.id,title:c.title,tags:c.tags||[],total_tokens_est:c.total_tokens_est||0,created_at:c.created_at,updated_at:c.updated_at};
     }),
     activeConversationId:activeConversationId,
     messages:(activeMessagesCache||[]).slice(-160),
@@ -1132,12 +1281,14 @@ function shouldUseWebRag(queryText,modelId,memorySnippets){
   const hasFutureYear=years.some(function(y){return y>cutoffYear;});
   const hasCurrentYear=years.some(function(y){return y>=new Date().getUTCFullYear();});
   const hasFreshTerm=WEB_TRIGGER_TERMS.some(function(t){return q.includes(t);});
-  const topMemoryScore=(memorySnippets||[]).reduce(function(mx,s){
-    return Math.max(mx,Number(s&&s.score)||0);
-  },0);
+  const topVectorScore=(memorySnippets||[])
+    .filter(function(s){return s && s.source==='vector';})
+    .reduce(function(mx,s){
+      return Math.max(mx,Number(s&&s.score)||0);
+    },0);
 
   if(hasFutureYear || hasCurrentYear) return {enabled:true,reason:'date-after-cutoff'};
-  if(hasFreshTerm && topMemoryScore<4.5) return {enabled:true,reason:'fresh-query'};
+  if(hasFreshTerm && topVectorScore<0.75) return {enabled:true,reason:'fresh-query'};
   return {enabled:false,reason:'memory-sufficient'};
 }
 
@@ -1276,11 +1427,11 @@ function clearPendingAttachments(){
 function buildRagSystemMessage(snippets){
   if(!snippets || !snippets.length) return null;
   var lines=snippets.map(function(s,idx){
-    return (idx+1)+'. ['+(s.title||'Chat')+'] '+(s.role||'user')+': '+(s.text||'');
+    return (idx+1)+'. '+(s.pinned?'[PINNED] ':'['+(s.title||'Chat')+'] ')+(s.role||'user')+': '+(s.text||'');
   });
   return {
     role:'system',
-    content:'Relevant memory snippets from your saved chats. Use only if relevant and do not fabricate details:\n'+lines.join('\n')
+    content:'[PRIORITY CONTEXT]\nRelevant memory snippets from your saved chats. Use only if relevant and do not fabricate details:\n'+lines.join('\n')
   };
 }
 
@@ -1346,7 +1497,15 @@ function resetChatUI(){
 
 function fillChatFromMessages(rows){
   activeMessagesCache=(rows||[]).map(function(r){
-    return {role:r.role,content:r.content,model_id:r.model_id||null,created_at:r.created_at||null};
+    return {
+      id:r.id||null,
+      role:r.role,
+      content:r.content,
+      model_id:r.model_id||null,
+      created_at:r.created_at||null,
+      feedback:r.feedback||null,
+      pinned:!!r.pinned
+    };
   });
   hist=[];msgN=0;
   var c=document.getElementById('msgs');
@@ -1354,7 +1513,7 @@ function fillChatFromMessages(rows){
   rows.forEach(function(r){
     var role=r.role==='assistant'?'ass':(r.role==='user'?'user':'ass');
     var m=MODEL_BY_ID[r.model_id||''];
-    addMsg(role,r.content,role==='ass'?(m?m.name:'AI'):null);
+    addMsg(role,r.content,role==='ass'?(m?m.name:'AI'):null,{messageId:r.id||null,pinned:!!r.pinned,feedback:r.feedback||null});
     hist.push({role:r.role==='assistant'?'assistant':r.role,content:r.content});
   });
   if(!rows.length)c.appendChild(buildWelcome());
@@ -1379,6 +1538,7 @@ function renderConversationSelect(){
     empty.className='drawer-empty';
     empty.textContent='No saved chats yet. Start a new conversation and it will appear here.';
     list.appendChild(empty);
+    renderDrawerTagEditor();
     return;
   }
   convList.forEach(function(c){
@@ -1394,6 +1554,16 @@ function renderConversationSelect(){
     title.className='drawer-item-title';
     title.textContent=(c.title||'New Chat').slice(0,50);
 
+    var tagRow=document.createElement('div');
+    tagRow.className='drawer-item-tags';
+    var tags=Array.isArray(c.tags) ? c.tags : normalizeTagList(c.tags||'');
+    tags.slice(0,4).forEach(function(tag){
+      var pill=document.createElement('span');
+      pill.className='tag-pill';
+      pill.textContent=tag;
+      tagRow.appendChild(pill);
+    });
+
     var editBtn=document.createElement('button');
     editBtn.type='button';
     editBtn.className='drawer-edit';
@@ -1403,16 +1573,34 @@ function renderConversationSelect(){
       renameConversation(c);
     };
 
+    var deleteBtn=document.createElement('button');
+    deleteBtn.type='button';
+    deleteBtn.className='drawer-del';
+    deleteBtn.textContent='Delete';
+    deleteBtn.onclick=function(e){
+      e.stopPropagation();
+      deleteConversation(c);
+    };
+
+    var actions=document.createElement('div');
+    actions.className='drawer-item-actions';
     head.appendChild(title);
-    head.appendChild(editBtn);
+    actions.appendChild(editBtn);
+    actions.appendChild(deleteBtn);
+    head.appendChild(actions);
 
     var meta=document.createElement('div');
     meta.className='drawer-item-meta';
-    meta.textContent=(c.updated_at||c.created_at||'').replace('T',' ').slice(0,16);
+    var tokenText='~'+Math.max(0,Math.round(Number(c.total_tokens_est||0)))+' tok';
+    meta.textContent=((c.updated_at||c.created_at||'').replace('T',' ').slice(0,16) || '');
+    if(meta.textContent) meta.textContent+=' · ';
+    meta.textContent+=tokenText;
     item.appendChild(head);
+    if(tags.length) item.appendChild(tagRow);
     item.appendChild(meta);
     list.appendChild(item);
   });
+  renderDrawerTagEditor();
 }
 
 async function renameConversation(convo){
@@ -1428,6 +1616,94 @@ async function renameConversation(convo){
     toast('Chat renamed');
   }catch(e){
     toast('Rename failed: '+((e.data&&e.data.error)||e.message));
+  }
+}
+
+async function deleteConversation(convo){
+  if(!convo || !convo.id) return;
+  var title=(convo.title||'New Chat').slice(0,60);
+  if(!window.confirm('Delete chat "'+title+'"? This cannot be undone.')) return;
+
+  var wasActive=convo.id===activeConversationId;
+  try{
+    var data=await apiJSON('/api/messages?conversation_id='+encodeURIComponent(convo.id));
+    await apiJSON('/api/conversations',{method:'DELETE',body:{id:convo.id}});
+    if(pendingDeleteUndoTimer) clearTimeout(pendingDeleteUndoTimer);
+    pendingDeletedConversation={
+      id:convo.id,
+      title:convo.title||'New Chat',
+      messages:(data.messages||[]).map(function(m){
+        return {
+          role:m.role,
+          content:m.content,
+          model_id:m.model_id||null
+        };
+      }),
+      wasActive:wasActive,
+      previousRagState:Object.prototype.hasOwnProperty.call(chatRagToggles,convo.id)
+        ? chatRagToggles[convo.id]
+        : null
+    };
+    if(wasActive){
+      activeConversationId=null;
+    }
+    await loadConversations(false);
+    if(wasActive){
+      clearPendingAttachments();
+      if(convList.length){
+        await loadConversation(convList[0].id);
+      }else{
+        newChat();
+      }
+    }else{
+      renderConversationSelect();
+    }
+    closeDrawer();
+    toast('Chat deleted', 'Undo', restoreDeletedConversation, 8000);
+    pendingDeleteUndoTimer=setTimeout(function(){
+      pendingDeletedConversation=null;
+      pendingDeleteUndoTimer=null;
+    },8000);
+  }catch(e){
+    toast('Delete failed: '+((e.data&&e.data.error)||e.message));
+  }
+}
+
+async function restoreDeletedConversation(){
+  var snapshot=pendingDeletedConversation;
+  if(!snapshot) return;
+  pendingDeletedConversation=null;
+  if(pendingDeleteUndoTimer){
+    clearTimeout(pendingDeleteUndoTimer);
+    pendingDeleteUndoTimer=null;
+  }
+
+  try{
+    var created=await apiJSON('/api/conversations',{method:'POST',body:{title:snapshot.title||'New Chat'}});
+    var restoredId=created && created.conversation && created.conversation.id;
+    if(!restoredId) throw new Error('Could not create restored conversation');
+
+    if(snapshot.previousRagState!==null && snapshot.previousRagState!==undefined){
+      chatRagToggles[restoredId]=!!snapshot.previousRagState;
+      saveChatRagToggles();
+    }
+
+    for(var i=0;i<(snapshot.messages||[]).length;i++){
+      var msg=snapshot.messages[i];
+      await apiJSON('/api/messages',{method:'POST',body:{
+        conversation_id:restoredId,
+        role:msg.role,
+        content:msg.content,
+        model_id:msg.model_id||null
+      }});
+    }
+
+    activeConversationId=restoredId;
+    await loadConversations(false);
+    await loadConversation(restoredId);
+    toast('Chat restored');
+  }catch(e){
+    toast('Undo failed: '+((e.data&&e.data.error)||e.message));
   }
 }
 
@@ -1462,15 +1738,17 @@ async function loadConversation(id){
   fillChatFromMessages(data.messages||[]);
   renderChatRagToggle();
   renderConversationSelect();
+  renderDrawerTagEditor();
   saveBootCache();
 }
 
 async function saveMessage(role,content,modelId){
   var cid=await ensureConversation();
-  await apiJSON('/api/messages',{
+  var data=await apiJSON('/api/messages',{
     method:'POST',
     body:{conversation_id:cid,role:role,content:content,model_id:modelId||null}
   });
+  return data.message||null;
 }
 
 async function authSubmit(action){
@@ -1611,6 +1889,7 @@ function addMsg(role,content,mn,meta){
   var d=document.createElement('div');
   d.className='msg '+role;
   d.setAttribute('data-ts',new Date().toLocaleString('en-IN'));
+  if(meta && meta.messageId) d.setAttribute('data-message-id',meta.messageId);
   var av=document.createElement('div');
   av.className='av';
   av.textContent=(role==='user')?'YOU':'AI';
@@ -1627,10 +1906,61 @@ function addMsg(role,content,mn,meta){
   var inner=document.createElement('div');
   inner.innerHTML=fmt(content);
   bbl.appendChild(inner);
+
+  if(authUser && meta && meta.messageId){
+    var actions=document.createElement('div');
+    actions.className='msg-actions';
+
+    var forkBtn=document.createElement('button');
+    forkBtn.type='button';
+    forkBtn.className='msg-action';
+    forkBtn.textContent='FORK';
+    forkBtn.onclick=function(e){
+      e.stopPropagation();
+      forkConversationFromMessage(meta.messageId);
+    };
+    actions.appendChild(forkBtn);
+
+    var pinBtn=document.createElement('button');
+    pinBtn.type='button';
+    pinBtn.className='msg-action'+(meta.pinned?' on':'');
+    pinBtn.textContent=meta.pinned?'UNPIN':'PIN';
+    pinBtn.onclick=function(e){
+      e.stopPropagation();
+      togglePinMessage(meta.messageId, !meta.pinned);
+    };
+    actions.appendChild(pinBtn);
+
+    var isAssistant=role==='ass';
+    if(isAssistant){
+      var upBtn=document.createElement('button');
+      upBtn.type='button';
+      upBtn.className='msg-action'+(meta.feedback==='up'?' on':'');
+      upBtn.textContent='👍';
+      upBtn.onclick=function(e){
+        e.stopPropagation();
+        setMessageFeedback(meta.messageId, meta.feedback==='up' ? null : 'up');
+      };
+      actions.appendChild(upBtn);
+
+      var downBtn=document.createElement('button');
+      downBtn.type='button';
+      downBtn.className='msg-action'+(meta.feedback==='down'?' on':'');
+      downBtn.textContent='👎';
+      downBtn.onclick=function(e){
+        e.stopPropagation();
+        setMessageFeedback(meta.messageId, meta.feedback==='down' ? null : 'down');
+      };
+      actions.appendChild(downBtn);
+    }
+
+    bbl.appendChild(actions);
+  }
   d.appendChild(av);
   d.appendChild(bbl);
   c.appendChild(d);
   sc();msgN++;
+  return d;
 }
 
 function fmt(t){
@@ -1667,6 +1997,128 @@ function addSys(txt,err){
   d.className='sysmsg'+(err?' err':'');
   d.textContent=txt;
   c.appendChild(d);sc();
+}
+
+function getCompareModelSet(baseIndex){
+  var out=[];
+  var seen={};
+  function pushModel(m){
+    if(!m || !isChatCapableModel(m)) return;
+    if(seen[m.id]) return;
+    seen[m.id]=true;
+    out.push(m);
+  }
+  pushModel(MODELS[baseIndex]);
+  for(var i=baseIndex+1;i<MODELS.length && out.length<3;i++) pushModel(MODELS[i]);
+  for(var j=0;j<baseIndex && out.length<3;j++) pushModel(MODELS[j]);
+  return out.slice(0,3);
+}
+
+function addCompareBlock(results, promptText){
+  var c=document.getElementById('msgs');
+  var wrap=document.createElement('div');
+  wrap.className='cmp-wrap';
+  var head=document.createElement('div');
+  head.className='cmp-head';
+  var left=document.createElement('div');
+  var title=document.createElement('div');
+  title.className='cmp-title';
+  title.textContent='MODEL COMPARISON';
+  var sub=document.createElement('div');
+  sub.className='cmp-sub';
+  sub.textContent='Prompt: '+String(promptText||'').slice(0,90);
+  left.appendChild(title);
+  left.appendChild(sub);
+  head.appendChild(left);
+  wrap.appendChild(head);
+
+  var grid=document.createElement('div');
+  grid.className='cmp-grid';
+  (results||[]).forEach(function(result){
+    var card=document.createElement('div');
+    card.className='cmp-card';
+    var model=document.createElement('div');
+    model.className='cmp-model';
+    model.textContent=(result.model && result.model.name ? result.model.name : 'Model') + (result.ok ? '' : ' (error)');
+    var text=document.createElement('div');
+    text.className='cmp-text';
+    text.innerHTML=fmt(result.reply || result.error || '(empty)');
+    card.appendChild(model);
+    card.appendChild(text);
+    grid.appendChild(card);
+  });
+  wrap.appendChild(grid);
+  c.appendChild(wrap);
+  sc();
+  return wrap;
+}
+
+async function togglePinMessage(messageId,pinned){
+  if(!activeConversationId) return;
+  try{
+    await apiJSON('/api/messages',{method:'PATCH',body:{action:'pin',conversation_id:activeConversationId,message_id:messageId,pinned:!!pinned}});
+    await loadConversation(activeConversationId);
+    toast(pinned?'Message pinned':'Message unpinned');
+  }catch(e){
+    toast('Pin failed: '+((e.data&&e.data.error)||e.message));
+  }
+}
+
+async function setMessageFeedback(messageId,feedback){
+  if(!activeConversationId) return;
+  try{
+    await apiJSON('/api/messages',{method:'PATCH',body:{action:'feedback',conversation_id:activeConversationId,message_id:messageId,feedback:feedback||null}});
+    await loadConversation(activeConversationId);
+    toast(feedback ? ('Feedback saved: '+feedback) : 'Feedback cleared');
+  }catch(e){
+    toast('Feedback failed: '+((e.data&&e.data.error)||e.message));
+  }
+}
+
+async function forkConversationFromMessage(messageId){
+  if(!activeConversationId) return;
+  try{
+    var data=await apiJSON('/api/conversations',{method:'POST',body:{source_conversation_id:activeConversationId,fork_message_id:messageId,title:'Forked Chat'}});
+    activeConversationId=data.conversation.id;
+    await loadConversations(false);
+    await loadConversation(activeConversationId);
+    renderConversationSelect();
+    closeDrawer();
+    toast('Conversation forked');
+  }catch(e){
+    toast('Fork failed: '+((e.data&&e.data.error)||e.message));
+  }
+}
+
+function buildMarkdownExport(){
+  var convo=getActiveConversation();
+  var lines=[];
+  lines.push('# NIM Chat Export');
+  lines.push('');
+  lines.push('**Conversation:** '+(convo && convo.title ? convo.title : 'Current Chat'));
+  lines.push('**Exported:** '+new Date().toLocaleString('en-IN'));
+  if(convo && Array.isArray(convo.tags) && convo.tags.length){
+    lines.push('**Tags:** '+convo.tags.join(', '));
+  }
+  lines.push('');
+  (activeMessagesCache||[]).forEach(function(msg){
+    var label=msg.role==='assistant' ? 'Assistant' : (msg.role==='user' ? 'User' : 'System');
+    lines.push('## '+label);
+    lines.push('');
+    lines.push(String(msg.content||'').replace(/\n/g,'  \n'));
+    lines.push('');
+  });
+  return lines.join('\n');
+}
+
+function xmd(){
+  var md=buildMarkdownExport();
+  var blob=new Blob([md],{type:'text/markdown'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='nim-chat-'+Date.now()+'.md';
+  a.click();
+  toast('Markdown export downloaded');
 }
 
 // ── SEND ──
@@ -1753,43 +2205,88 @@ async function go(){
   document.getElementById('cc').textContent='0 chars';
   document.getElementById('sbtn').disabled=true;
 
-  addMsg('user',userDisplayText||txt,null);
+  var userMsgEl=addMsg('user',userDisplayText||txt,null,{messageId:null});
   hist.push({role:'user',content:userDisplayText||txt});
   activeMessagesCache.push({role:'user',content:userDisplayText||txt,model_id:null,created_at:new Date().toISOString()});
   saveBootCache();
-  try{await saveMessage('user',userDisplayText||txt,null);}catch(e){addSys('Warning: user message not saved.',true);}
+  try{
+    var savedUser=await saveMessage('user',userDisplayText||txt,null);
+    if(savedUser && savedUser.id){
+      userMsgEl.setAttribute('data-message-id',savedUser.id);
+      activeMessagesCache[activeMessagesCache.length-1].id=savedUser.id;
+      saveBootCache();
+    }
+  }catch(e){addSys('Warning: user message not saved.',true);} 
   addTyp();
 
   try{
     var promptMsgs=await buildPromptMessages(txt||userDisplayText,m.id,userPayloadContent);
-    var payload={model:m.id,messages:promptMsgs,max_tokens:4096,temperature:0.7,stream:false};
-    var res=await postChat(payload);
-    var data=await res.json();
+    if(compareMode){
+      var compareModels=getCompareModelSet(Number(msel.value));
+      var compareResults=await Promise.all(compareModels.map(async function(cm){
+        try{
+          var payload={model:cm.id,messages:promptMsgs,max_tokens:4096,temperature:0.7,stream:false};
+          var res=await postChat(payload);
+          var data=await res.json();
+          if(!res.ok){
+            return {model:cm,ok:false,error:'ERROR '+res.status+': '+((data && (data.detail||data.message||data.error))||JSON.stringify(data))};
+          }
+          var reply=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'(empty)';
+          return {model:cm,ok:true,reply:appendSourceCitations(reply,lastWebSnippetsUsed)};
+        }catch(e){
+          return {model:cm,ok:false,error:'NETWORK ERROR: '+e.message};
+        }
+      }));
     rmTyp();
-    if(!res.ok){
-      const isUpstreamModel404 =
-        res.status===404 &&
-        data &&
-        (data.status===404 || /non-json/i.test(data.error||''));
-
-      if(isUpstreamModel404){
-        addSys('Selected model does not support chat endpoint. Pick a chat model (reasoning/coding) and try again.',true);
-      } else if(res.status===404){
-        addSys('ERROR 404: API route missing. Deploy on Vercel (with /api/chat) or run via `vercel dev`.',true);
-      } else {
-        addSys('ERROR '+res.status+': '+(data.detail||data.message||JSON.stringify(data)),true);
+      addCompareBlock(compareResults,txt||userDisplayText);
+      for(var i=0;i<compareResults.length;i++){
+        var result=compareResults[i];
+        if(!result.ok) continue;
+        hist.push({role:'assistant',content:result.reply});
+        activeMessagesCache.push({role:'assistant',content:result.reply,model_id:result.model.id,created_at:new Date().toISOString()});
+        try{await saveMessage('assistant',result.reply,result.model.id);}catch(e){addSys('Warning: assistant message not saved.',true);} 
       }
-    } else {
-      var reply=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'(empty)';
-      reply=appendSourceCitations(reply,lastWebSnippetsUsed);
-      hist.push({role:'assistant',content:reply});
-      addMsg('ass',reply,m.name,{webUsed:lastWebSnippetsUsed.length>0});
-      activeMessagesCache.push({role:'assistant',content:reply,model_id:m.id,created_at:new Date().toISOString()});
       saveBootCache();
-      try{await saveMessage('assistant',reply,m.id);}catch(e){addSys('Warning: assistant message not saved.',true);}
       recCall(m.id).catch(function(){});
       loadConversations(false).catch(function(){});
       clearPendingAttachments();
+    }else{
+      var payload={model:m.id,messages:promptMsgs,max_tokens:4096,temperature:0.7,stream:false};
+      var res=await postChat(payload);
+      var data=await res.json();
+      rmTyp();
+      if(!res.ok){
+        const isUpstreamModel404 =
+          res.status===404 &&
+          data &&
+          (data.status===404 || /non-json/i.test(data.error||''));
+
+        if(isUpstreamModel404){
+          addSys('Selected model does not support chat endpoint. Pick a chat model (reasoning/coding) and try again.',true);
+        } else if(res.status===404){
+          addSys('ERROR 404: API route missing. Deploy on Vercel (with /api/chat) or run via `vercel dev`.',true);
+        } else {
+          addSys('ERROR '+res.status+': '+(data.detail||data.message||JSON.stringify(data)),true);
+        }
+      } else {
+        var reply=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'(empty)';
+        reply=appendSourceCitations(reply,lastWebSnippetsUsed);
+        hist.push({role:'assistant',content:reply});
+        var assEl=addMsg('ass',reply,m.name,{webUsed:lastWebSnippetsUsed.length>0,messageId:null});
+        activeMessagesCache.push({role:'assistant',content:reply,model_id:m.id,created_at:new Date().toISOString()});
+        saveBootCache();
+        try{
+          var savedAss=await saveMessage('assistant',reply,m.id);
+          if(savedAss && savedAss.id){
+            assEl.setAttribute('data-message-id',savedAss.id);
+            activeMessagesCache[activeMessagesCache.length-1].id=savedAss.id;
+            saveBootCache();
+          }
+        }catch(e){addSys('Warning: assistant message not saved.',true);} 
+        recCall(m.id).catch(function(){});
+        loadConversations(false).catch(function(){});
+        clearPendingAttachments();
+      }
     }
   }catch(e){
     rmTyp();addSys('NETWORK ERROR: '+e.message,true);
@@ -1904,10 +2401,41 @@ function hk(e){
 function oi(el){ar(el);document.getElementById('cc').textContent=el.value.length+' chars';}
 function ar(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,110)+'px';}
 function sc(){var c=document.getElementById('msgs');c.scrollTop=c.scrollHeight;}
-function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(function(){t.style.display='none';},3000);}
+function toast(msg,actionLabel,actionFn,duration){
+  var t=document.getElementById('toast');
+  if(!t) return;
+  if(toastHideTimer){
+    clearTimeout(toastHideTimer);
+    toastHideTimer=null;
+  }
+  t.innerHTML='';
+  var label=document.createElement('span');
+  label.textContent=msg;
+  t.appendChild(label);
+
+  if(actionLabel && typeof actionFn==='function'){
+    var btn=document.createElement('button');
+    btn.type='button';
+    btn.textContent=actionLabel;
+    btn.style.cssText='margin-left:10px;background:transparent;border:1px solid var(--g);color:var(--g);font-family:"Share Tech Mono",monospace;font-size:9px;padding:3px 7px;border-radius:2px;cursor:pointer';
+    btn.onclick=function(){
+      actionFn();
+    };
+    t.appendChild(btn);
+  }
+
+  t.style.display='block';
+  var hideAfter=Number(duration)||3000;
+  toastHideTimer=setTimeout(function(){
+    t.style.display='none';
+    t.innerHTML='';
+    toastHideTimer=null;
+  },hideAfter);
+}
 
 loadRagSettings();
 loadChatRagToggles();
+renderCompareMode();
 initAuth();
 </script>
 </body>

@@ -25,7 +25,7 @@ export default async function handler(req, res) {
     }
 
     const conversations = await supabaseRest(
-      `conversations?select=id,title,created_at,updated_at&user_id=eq.${session.user_id}&order=updated_at.desc`
+      `conversations?select=id,title,tags,total_tokens_est,created_at,updated_at&user_id=eq.${session.user_id}&order=updated_at.desc`
     );
 
     const requested = String(req.query.last_conversation_id || '').trim();

@@ -25,12 +25,19 @@ create table if not exists conversations (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references users(id) on delete cascade,
   title text not null default 'New Chat',
+  tags text[] not null default '{}'::text[],
+  total_tokens_est bigint not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 create index if not exists conversations_user_idx on conversations(user_id);
 create index if not exists conversations_updated_idx on conversations(updated_at desc);
+alter table conversations
+  add column if not exists tags text[] not null default '{}'::text[];
+
+alter table conversations
+  add column if not exists total_tokens_est bigint not null default 0;
 
 create table if not exists messages (
   id bigint generated always as identity primary key,
@@ -42,6 +49,7 @@ create table if not exists messages (
 );
 
 create index if not exists messages_conversation_idx on messages(conversation_id, id);
+create index if not exists idx_messages_conv_created on messages(conversation_id, created_at desc);
 
 create table if not exists global_stats (
   id int primary key default 1,
@@ -121,6 +129,34 @@ create table if not exists memory_chunks (
 create index if not exists memory_chunks_user_idx on memory_chunks(user_id);
 create index if not exists memory_chunks_conversation_idx on memory_chunks(conversation_id);
 create index if not exists memory_chunks_message_idx on memory_chunks(message_id);
+create index if not exists idx_memory_chunks_user_conv on memory_chunks(user_id, conversation_id);
+
+create table if not exists pinned_messages (
+  id bigserial primary key,
+  user_id uuid not null references users(id) on delete cascade,
+  message_id bigint not null references messages(id) on delete cascade,
+  conversation_id uuid not null references conversations(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (user_id, message_id)
+);
+
+create index if not exists pinned_messages_user_idx on pinned_messages(user_id);
+create index if not exists pinned_messages_conversation_idx on pinned_messages(conversation_id);
+create index if not exists pinned_messages_message_idx on pinned_messages(message_id);
+
+create table if not exists message_feedback (
+  id bigserial primary key,
+  user_id uuid not null references users(id) on delete cascade,
+  message_id bigint not null references messages(id) on delete cascade,
+  conversation_id uuid not null references conversations(id) on delete cascade,
+  feedback text not null check (feedback in ('up','down')),
+  created_at timestamptz not null default now(),
+  unique (user_id, message_id)
+);
+
+create index if not exists message_feedback_user_idx on message_feedback(user_id);
+create index if not exists message_feedback_conversation_idx on message_feedback(conversation_id);
+create index if not exists message_feedback_message_idx on message_feedback(message_id);
 
 create table if not exists memory_summaries (
   id bigint generated always as identity primary key,
@@ -144,6 +180,7 @@ create or replace function match_memory_chunks(
 )
 returns table (
   id bigint,
+  message_id bigint,
   conversation_id uuid,
   role text,
   chunk_text text,
@@ -156,6 +193,7 @@ set search_path = public
 as $$
   select
     mc.id,
+    mc.message_id,
     mc.conversation_id,
     mc.role,
     mc.chunk_text,

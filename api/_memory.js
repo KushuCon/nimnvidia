@@ -50,7 +50,7 @@ export async function fetchEmbedding(text) {
   return data.data[0].embedding;
 }
 
-export function splitIntoChunks(text, chunkSize = 700, overlap = 120) {
+export function splitIntoChunks(text, chunkSize = 500, overlap = 80) {
   const clean = normalizeSpaces(text);
   if (!clean) return [];
 
@@ -69,7 +69,7 @@ export function splitIntoChunks(text, chunkSize = 700, overlap = 120) {
     i = Math.max(end - overlap, i + 1);
   }
 
-  return out.slice(0, 12);
+  return out.slice(0, 6);
 }
 
 async function summarizeWithNvidia(conversationMessages) {
@@ -160,17 +160,22 @@ export async function indexMessageForMemory({ userId, conversationId, messageId,
 export async function maybeCreateSummarySnapshot({ userId, conversationId }) {
   if (!userId || !conversationId) return;
 
+  const countRows = await supabaseRest(
+    `messages?select=id&conversation_id=eq.${conversationId}`
+  );
+  const messageCount = Array.isArray(countRows) ? countRows.length : 0;
+  if (messageCount < 10 || messageCount % 10 !== 0) return;
+
   const latest = await supabaseRest(
     `messages?select=id,role,content,created_at&conversation_id=eq.${conversationId}&order=id.desc&limit=24`
   );
   if (!latest || latest.length < 14) return;
 
-  const newestId = Number(latest[0].id || 0);
-  if (!newestId || newestId % 12 !== 0) return;
-
   const existing = await supabaseRest(
     `memory_summaries?select=id,upto_message_id&conversation_id=eq.${conversationId}&order=created_at.desc&limit=1`
   );
+  const newestId = Number(latest[0].id || 0);
+  if (!newestId) return;
   if (existing && existing[0] && Number(existing[0].upto_message_id || 0) >= newestId) return;
 
   const chron = [...latest].reverse();
