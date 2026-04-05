@@ -158,6 +158,18 @@ create index if not exists message_feedback_user_idx on message_feedback(user_id
 create index if not exists message_feedback_conversation_idx on message_feedback(conversation_id);
 create index if not exists message_feedback_message_idx on message_feedback(message_id);
 
+create table if not exists rag_blacklist (
+  id bigserial primary key,
+  user_id uuid references users(id) on delete cascade,
+  conversation_id uuid references conversations(id) on delete cascade,
+  reason text,
+  created_at timestamptz default now(),
+  unique (user_id, conversation_id)
+);
+
+create index if not exists rag_blacklist_user_idx on rag_blacklist(user_id);
+create index if not exists rag_blacklist_conversation_idx on rag_blacklist(conversation_id);
+
 create table if not exists memory_summaries (
   id bigint generated always as identity primary key,
   user_id uuid not null references users(id) on delete cascade,
@@ -171,6 +183,56 @@ create table if not exists memory_summaries (
 create index if not exists memory_summaries_user_idx on memory_summaries(user_id);
 create index if not exists memory_summaries_conversation_idx on memory_summaries(conversation_id);
 create index if not exists memory_summaries_upto_idx on memory_summaries(upto_message_id);
+
+do $$
+declare
+  v_dim int;
+  v_distinct_dims int;
+begin
+  -- HNSW needs a fixed-dimension vector column (vector(N)).
+  select count(distinct vector_dims(embedding))
+    into v_distinct_dims
+  from memory_chunks
+  where embedding is not null;
+
+  if v_distinct_dims = 0 then
+    raise notice 'Skipping HNSW: memory_chunks.embedding has no data yet. Re-run this block after first indexed messages.';
+    return;
+  end if;
+
+  if v_distinct_dims > 1 then
+    raise exception 'Cannot enable HNSW: memory_chunks.embedding contains mixed dimensions. Clean data to a single dimension first.';
+  end if;
+
+  select vector_dims(embedding)
+    into v_dim
+  from memory_chunks
+  where embedding is not null
+  limit 1;
+
+  execute format(
+    'alter table memory_chunks alter column embedding type vector(%s) using embedding::vector(%s)',
+    v_dim,
+    v_dim
+  );
+
+  -- Keep summary embeddings compatible with the same vector dimension when present.
+  begin
+    execute format(
+      'alter table memory_summaries alter column embedding type vector(%s) using case when embedding is null then null else embedding::vector(%s) end',
+      v_dim,
+      v_dim
+    );
+  exception
+    when others then
+      raise notice 'memory_summaries.embedding dimension update skipped: %', sqlerrm;
+  end;
+
+  execute 'drop index if exists memory_chunks_embedding_idx';
+  execute 'create index if not exists memory_chunks_embedding_idx on memory_chunks using hnsw (embedding vector_cosine_ops) with (m = 16, ef_construction = 64)';
+
+  raise notice 'HNSW enabled on memory_chunks.embedding with dimension %', v_dim;
+end $$;
 
 create or replace function match_memory_chunks(
   query_embedding vector,

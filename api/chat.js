@@ -21,6 +21,42 @@ export default async function handler(req, res) {
       body: JSON.stringify(payload),
     });
 
+    if (payload && payload.stream === true) {
+      if (!response.ok) {
+        const rawErr = await response.text();
+        let dataErr = null;
+        try {
+          dataErr = rawErr ? JSON.parse(rawErr) : null;
+        } catch {
+          dataErr = null;
+        }
+        return res.status(response.status).json(
+          dataErr || {
+            error: 'Streaming upstream error',
+            status: response.status,
+            body: String(rawErr || '').slice(0, 1200),
+          }
+        );
+      }
+
+      res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-cache, no-transform');
+      res.setHeader('Connection', 'keep-alive');
+
+      if (!response.body || !response.body.getReader) {
+        res.write('data: [DONE]\n\n');
+        return res.end();
+      }
+
+      const reader = response.body.getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        res.write(Buffer.from(value));
+      }
+      return res.end();
+    }
+
     const raw = await response.text();
     try {
       const data = JSON.parse(raw);

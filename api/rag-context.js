@@ -182,6 +182,17 @@ export default async function handler(req, res) {
     } else {
       ids = conversations.slice(0, 50).map((c) => c.id);
     }
+
+    try {
+      const blockedRows = await supabaseRest(
+        `rag_blacklist?select=conversation_id&user_id=eq.${session.user_id}`
+      );
+      const blocked = new Set((blockedRows || []).map((row) => row.conversation_id));
+      ids = ids.filter((id) => !blocked.has(id));
+    } catch {
+      // Blacklist may not be migrated yet.
+    }
+
     if (!ids.length) return res.status(200).json({ snippets: [] });
 
     const snippets = [];
@@ -306,6 +317,36 @@ export default async function handler(req, res) {
       if (feedback === 'down') snippet.score = Number(snippet.score || 0) - 2;
       if (feedback === 'up') snippet.score = Number(snippet.score || 0) + 0.5;
     });
+
+    // Conversation-level downvote penalty.
+    try {
+      const downvotes = await supabaseRest(
+        `message_feedback?select=conversation_id&user_id=eq.${session.user_id}&feedback=eq.down`
+      );
+      const badConvos = new Set((downvotes || []).map((row) => row.conversation_id));
+      snippets.forEach((snippet) => {
+        if (badConvos.has(snippet.conversation_id)) {
+          snippet.score = Number(snippet.score || 0) - 2;
+        }
+      });
+    } catch {
+      // Non-fatal, keep retrieval flow running.
+    }
+
+    // Pin boost so pinned notes remain top-priority.
+    try {
+      const pins = await supabaseRest(
+        `pinned_messages?select=message_id&user_id=eq.${session.user_id}`
+      );
+      const pinnedIds = new Set((pins || []).map((pin) => String(pin.message_id)));
+      snippets.forEach((snippet) => {
+        if (snippet.message_id && pinnedIds.has(String(snippet.message_id))) {
+          snippet.score = Number(snippet.score || 0) + 10;
+        }
+      });
+    } catch {
+      // Non-fatal, keep retrieval flow running.
+    }
 
     const pinned = snippets.filter((snippet) => snippet.source === 'pinned').sort((a, b) => b.score - a.score);
     const fused = rrf(snippets.filter((snippet) => snippet.source !== 'pinned'));

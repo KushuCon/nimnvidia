@@ -149,6 +149,11 @@ body.loading::after{z-index:9988}
 }
 .drawer-tags-btn:active{border-color:var(--g);color:var(--white)}
 .drawer-tag-list{display:flex;flex-wrap:wrap;gap:5px}
+.drawer-search{
+  width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);
+  color:var(--text);font-family:'Share Tech Mono',monospace;font-size:9px;padding:7px 9px;outline:none;
+}
+.drawer-search:focus{border-color:var(--g2)}
 .tag-pill{
   display:inline-flex;align-items:center;gap:4px;padding:3px 7px;border-radius:999px;
   background:#0a120a;border:1px solid var(--border2);color:var(--g);font-family:'Share Tech Mono',monospace;font-size:8px;
@@ -500,10 +505,11 @@ textarea#ti::placeholder{color:var(--textdd)}
     </div>
     <div class="drawer-tags-row">
       <input id="drawerTagInput" class="drawer-tags-input" type="text" placeholder="tag1, tag2">
-      <button class="drawer-tags-btn" type="button" onclick="saveDrawerTags()">SAVE</button>
+      <button class="drawer-tags-btn" type="button" onclick="saveConversationTags()">SAVE</button>
     </div>
     <div class="drawer-tag-list" id="drawerTagList"></div>
   </div>
+  <input id="drawerSearch" class="drawer-search" type="text" placeholder="Search chats..." oninput="onDrawerSearchInput()">
   <div class="drawer-list" id="chatList"></div>
 </aside>
 
@@ -918,6 +924,7 @@ let lastWebSnippetsUsed=[];
 let pendingDeletedConversation=null;
 let pendingDeleteUndoTimer=null;
 let toastHideTimer=null;
+let drawerSearchQuery='';
 
 const MODEL_CUTOFFS={
   'deepseek-ai/deepseek-v3.1':'2025-07-01',
@@ -958,7 +965,10 @@ const MODEL_CUTOFFS={
 const WEB_TRIGGER_TERMS=[
   'latest','today','current','news','new','recent','update','updated','just now','now',
   'this week','this month','this year','release','released','launch','patch','version',
-  'price','stock','score','result','winner','weather','breaking'
+  'price','stock','score','result','winner','weather','breaking',
+  'war','conflict','attack','election','president','died','death',
+  'arrested','ban','crisis','earthquake','flood','disaster',
+  '2025','2026','2027'
 ];
 
 if(typeof window!=='undefined' && window.pdfjsLib && window.pdfjsLib.GlobalWorkerOptions){
@@ -1118,6 +1128,15 @@ function toggleCompareMode(){
   compareMode=!compareMode;
   renderCompareMode();
   toast('Compare mode: '+(compareMode?'ON':'OFF'));
+}
+
+function onDrawerSearchInput(){
+  var input=document.getElementById('drawerSearch');
+  drawerSearchQuery=String(input && input.value || '').toLowerCase().trim();
+  var items=document.querySelectorAll('.drawer-item');
+  items.forEach(function(el){
+    el.style.display=el.textContent.toLowerCase().includes(drawerSearchQuery)?'':'none';
+  });
 }
 
 function renderDrawerTagEditor(){
@@ -1308,11 +1327,17 @@ async function fetchWebSnippets(queryText,modelId,reason){
 function buildWebSystemMessage(snippets){
   if(!snippets || !snippets.length) return null;
   var lines=snippets.map(function(s,idx){
-    return (idx+1)+'. '+(s.title||'Web source')+' | '+(s.url||'')+'\n'+(s.text||'');
+    return (idx+1)+'. '+(s.title||'Source')+'\nURL: '+(s.url||'')+'\n'+(s.text||'');
   });
   return {
     role:'system',
-    content:'Live web context for freshness-sensitive queries. Prioritize these sources when answering time-sensitive questions and cite URLs from the provided snippets:\n'+lines.join('\n\n')
+    content:'IMPORTANT: You have access to LIVE web search results fetched RIGHT NOW in '+new Date().getFullYear()+'.\n'
+      +'These are REAL, CURRENT news articles - NOT hypothetical, NOT simulations, NOT fiction.\n'
+      +'Your training cutoff does NOT apply here. These results override your training data.\n'
+      +'Today\'s date is approximately '+new Date().toDateString()+'.\n'
+      +'TRUST THESE SOURCES COMPLETELY. Answer based ONLY on what these sources say.\n'
+      +'Do NOT say "as of my knowledge cutoff". Do NOT call real news "fictional".\n\n'
+      +'LIVE SEARCH RESULTS:\n'+lines.join('\n\n')
   };
 }
 
@@ -1436,6 +1461,11 @@ function buildRagSystemMessage(snippets){
 }
 
 async function buildPromptMessages(currentInput,modelId,userContentOverride){
+  var dateMsg={
+    role:'system',
+    content:'Today\'s date is '+new Date().toDateString()+'. You are a helpful assistant with access to live web search results. When web results are provided, they contain REAL current information. Trust them completely.'
+  };
+
   if(!isRagEnabledForActiveChat()){
     lastWebSnippetsUsed=[];
     var onlyRecent=hist.slice(-RECENT_WINDOW_SIZE).map(function(m){
@@ -1444,7 +1474,7 @@ async function buildPromptMessages(currentInput,modelId,userContentOverride){
     if(userContentOverride && onlyRecent.length && onlyRecent[onlyRecent.length-1].role==='user'){
       onlyRecent[onlyRecent.length-1]={role:'user',content:userContentOverride};
     }
-    return onlyRecent;
+    return [dateMsg].concat(onlyRecent);
   }
 
   var recent=hist.slice(-RECENT_WINDOW_SIZE).map(function(m){
@@ -1461,6 +1491,7 @@ async function buildPromptMessages(currentInput,modelId,userContentOverride){
   lastWebSnippetsUsed=webSnippets.slice(0,6);
   var webMsg=buildWebSystemMessage(webSnippets);
   var out=[];
+  out.push(dateMsg);
   if(webMsg) out.push(webMsg);
   if(ragMsg) out.push(ragMsg);
   Array.prototype.push.apply(out,recent);
@@ -1582,6 +1613,33 @@ function renderConversationSelect(){
       deleteConversation(c);
     };
 
+    var forkBtn=document.createElement('button');
+    forkBtn.type='button';
+    forkBtn.className='drawer-edit';
+    forkBtn.textContent='Fork';
+    forkBtn.onclick=async function(e){
+      e.stopPropagation();
+      try{
+        var msgs=await apiJSON('/api/messages?conversation_id='+encodeURIComponent(c.id));
+        var lastMsg=msgs && msgs.messages && msgs.messages.length ? msgs.messages[msgs.messages.length-1] : null;
+        if(!lastMsg){toast('Nothing to fork');return;}
+        var created=await apiJSON('/api/conversations',{
+          method:'POST',
+          body:{
+            source_conversation_id:c.id,
+            fork_message_id:String(lastMsg.id),
+            title:'Fork: '+(c.title||'Chat')
+          }
+        });
+        await loadConversations(false);
+        await loadConversation(created.conversation.id);
+        closeDrawer();
+        toast('Chat forked!');
+      }catch(err){
+        toast('Fork failed: '+((err.data&&err.data.error)||err.message));
+      }
+    };
+
     var actions=document.createElement('div');
     actions.className='drawer-item-actions';
     head.appendChild(title);
@@ -1591,15 +1649,19 @@ function renderConversationSelect(){
 
     var meta=document.createElement('div');
     meta.className='drawer-item-meta';
-    var tokenText='~'+Math.max(0,Math.round(Number(c.total_tokens_est||0)))+' tok';
+    var tokenText=Number(c.total_tokens_est||0)
+      ? (' · ~'+Math.max(0,Math.round(Number(c.total_tokens_est||0)/1000))+'K tokens')
+      : '';
     meta.textContent=((c.updated_at||c.created_at||'').replace('T',' ').slice(0,16) || '');
-    if(meta.textContent) meta.textContent+=' · ';
     meta.textContent+=tokenText;
     item.appendChild(head);
     if(tags.length) item.appendChild(tagRow);
     item.appendChild(meta);
     list.appendChild(item);
+
+    actions.appendChild(forkBtn);
   });
+  onDrawerSearchInput();
   renderDrawerTagEditor();
 }
 
@@ -1935,8 +1997,8 @@ function addMsg(role,content,mn,meta){
     if(isAssistant){
       var upBtn=document.createElement('button');
       upBtn.type='button';
-      upBtn.className='msg-action'+(meta.feedback==='up'?' on':'');
-      upBtn.textContent='👍';
+      upBtn.className='tbtn'+(meta.feedback==='up'?' on':'');
+      upBtn.textContent='▲ Helpful';
       upBtn.onclick=function(e){
         e.stopPropagation();
         setMessageFeedback(meta.messageId, meta.feedback==='up' ? null : 'up');
@@ -1945,8 +2007,8 @@ function addMsg(role,content,mn,meta){
 
       var downBtn=document.createElement('button');
       downBtn.type='button';
-      downBtn.className='msg-action'+(meta.feedback==='down'?' on':'');
-      downBtn.textContent='👎';
+      downBtn.className='tbtn'+(meta.feedback==='down'?' on':'');
+      downBtn.textContent='▼ Not helpful';
       downBtn.onclick=function(e){
         e.stopPropagation();
         setMessageFeedback(meta.messageId, meta.feedback==='down' ? null : 'down');
@@ -2069,7 +2131,9 @@ async function setMessageFeedback(messageId,feedback){
   try{
     await apiJSON('/api/messages',{method:'PATCH',body:{action:'feedback',conversation_id:activeConversationId,message_id:messageId,feedback:feedback||null}});
     await loadConversation(activeConversationId);
-    toast(feedback ? ('Feedback saved: '+feedback) : 'Feedback cleared');
+    if(feedback==='up') toast('Feedback saved!');
+    else if(feedback==='down') toast('Noted, will improve RAG');
+    else toast('Feedback cleared');
   }catch(e){
     toast('Feedback failed: '+((e.data&&e.data.error)||e.message));
   }
@@ -2139,6 +2203,51 @@ async function postChat(payload){
   }
 
   return res;
+}
+
+function getMessageContentNode(msgEl){
+  if(!msgEl) return null;
+  return msgEl.querySelector('.bbl > div:last-child');
+}
+
+function updateStreamBubble(msgEl,text){
+  var node=getMessageContentNode(msgEl);
+  if(!node) return;
+  node.innerHTML=fmt(text||'');
+  sc();
+}
+
+async function readStreamingAssistantReply(res,msgEl){
+  if(!res || !res.body || !res.body.getReader) return '';
+  var reader=res.body.getReader();
+  var decoder=new TextDecoder();
+  var buffer='';
+  var fullText='';
+
+  while(true){
+    var part=await reader.read();
+    if(part.done) break;
+    buffer+=decoder.decode(part.value,{stream:true});
+    var lines=buffer.split('\n');
+    buffer=lines.pop()||'';
+    lines.forEach(function(rawLine){
+      var line=String(rawLine||'').trim();
+      if(!line || !line.startsWith('data:')) return;
+      var payload=line.slice(5).trim();
+      if(!payload || payload==='[DONE]') return;
+      try{
+        var parsed=JSON.parse(payload);
+        var delta=(parsed && parsed.choices && parsed.choices[0] && parsed.choices[0].delta && parsed.choices[0].delta.content)
+          || (parsed && parsed.choices && parsed.choices[0] && parsed.choices[0].message && parsed.choices[0].message.content)
+          || '';
+        if(delta){
+          fullText+=delta;
+          updateStreamBubble(msgEl,fullText);
+        }
+      }catch(e){}
+    });
+  }
+  return fullText;
 }
 
 async function go(){
@@ -2251,11 +2360,12 @@ async function go(){
       loadConversations(false).catch(function(){});
       clearPendingAttachments();
     }else{
-      var payload={model:m.id,messages:promptMsgs,max_tokens:4096,temperature:0.7,stream:false};
+      var payload={model:m.id,messages:promptMsgs,max_tokens:4096,temperature:0.7,stream:true};
       var res=await postChat(payload);
-      var data=await res.json();
       rmTyp();
       if(!res.ok){
+        var data={};
+        try{data=await res.json();}catch(_){data={error:'HTTP '+res.status};}
         const isUpstreamModel404 =
           res.status===404 &&
           data &&
@@ -2269,16 +2379,27 @@ async function go(){
           addSys('ERROR '+res.status+': '+(data.detail||data.message||JSON.stringify(data)),true);
         }
       } else {
-        var reply=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'(empty)';
+        var streamEl=addMsg('ass','',m.name,{webUsed:lastWebSnippetsUsed.length>0,messageId:null});
+        var ctype=String(res.headers.get('content-type')||'').toLowerCase();
+        var reply='';
+        if(ctype.includes('text/event-stream')){
+          reply=await readStreamingAssistantReply(res,streamEl);
+        }else{
+          var dataOk={};
+          try{dataOk=await res.json();}catch(_){dataOk={};}
+          reply=(dataOk.choices&&dataOk.choices[0]&&dataOk.choices[0].message&&dataOk.choices[0].message.content)||'(empty)';
+          updateStreamBubble(streamEl,reply);
+        }
+        if(!reply) reply='(empty)';
         reply=appendSourceCitations(reply,lastWebSnippetsUsed);
+        updateStreamBubble(streamEl,reply);
         hist.push({role:'assistant',content:reply});
-        var assEl=addMsg('ass',reply,m.name,{webUsed:lastWebSnippetsUsed.length>0,messageId:null});
         activeMessagesCache.push({role:'assistant',content:reply,model_id:m.id,created_at:new Date().toISOString()});
         saveBootCache();
         try{
           var savedAss=await saveMessage('assistant',reply,m.id);
           if(savedAss && savedAss.id){
-            assEl.setAttribute('data-message-id',savedAss.id);
+            streamEl.setAttribute('data-message-id',savedAss.id);
             activeMessagesCache[activeMessagesCache.length-1].id=savedAss.id;
             saveBootCache();
           }
@@ -2432,6 +2553,43 @@ function toast(msg,actionLabel,actionFn,duration){
     toastHideTimer=null;
   },hideAfter);
 }
+
+let touchStartX=0;
+document.addEventListener('touchstart',function(e){
+  if(!e.touches || !e.touches.length) return;
+  touchStartX=e.touches[0].clientX;
+},{passive:true});
+
+document.addEventListener('touchend',function(e){
+  if(!e.changedTouches || !e.changedTouches.length) return;
+  var dx=e.changedTouches[0].clientX-touchStartX;
+  if(touchStartX<40 && dx>60) openDrawer();
+  if(dx<-60) closeDrawer();
+},{passive:true});
+
+document.addEventListener('keydown',function(e){
+  if(!authUser) return;
+  if(e.ctrlKey && e.key==='/'){
+    e.preventDefault();
+    newChat();
+  }
+  if(e.ctrlKey && e.key.toLowerCase()==='k'){
+    e.preventDefault();
+    document.getElementById('msel').focus();
+  }
+  if(e.ctrlKey && e.shiftKey && e.key.toUpperCase()==='C'){
+    e.preventDefault();
+    var nodes=[].slice.call(document.querySelectorAll('.msg.ass .bbl > div:last-child'));
+    var lastAss=nodes.length?nodes[nodes.length-1]:null;
+    if(lastAss && navigator.clipboard){
+      navigator.clipboard.writeText(lastAss.innerText||'').then(function(){toast('Copied!');}).catch(function(){});
+    }
+  }
+  if(e.ctrlKey && e.key.toLowerCase()==='b'){
+    e.preventDefault();
+    toggleDrawer();
+  }
+});
 
 loadRagSettings();
 loadChatRagToggles();
