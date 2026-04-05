@@ -1,5 +1,32 @@
 import { requireSession, supabaseRpc } from './_supabase.js';
 
+const TRUSTED_INDIAN_NEWS_DOMAINS = [
+  'aajtak.in',
+  'indiatoday.in',
+  'thehindu.com',
+  'indianexpress.com',
+  'ndtv.com',
+  'hindustantimes.com',
+  'timesofindia.indiatimes.com',
+  'economictimes.indiatimes.com',
+  'livemint.com',
+  'news18.com',
+  'aninews.in',
+];
+
+const TRUSTED_GLOBAL_NEWS_DOMAINS = [
+  'reuters.com',
+  'apnews.com',
+  'bbc.com',
+  'aljazeera.com',
+  'theguardian.com',
+  'nytimes.com',
+  'wsj.com',
+  'bloomberg.com',
+  'cnn.com',
+  'npr.org',
+];
+
 function decodeHtml(input) {
   return String(input || '')
     .replace(/&amp;/g, '&')
@@ -31,12 +58,75 @@ function normalizeUrl(raw) {
   if (!u) return null;
   try {
     const parsed = new URL(u);
+    // DuckDuckGo result links may be wrapped as /l/?uddg=<encoded-url>.
+    if (parsed.hostname.includes('duckduckgo.com') && parsed.pathname.startsWith('/l/')) {
+      const real = parsed.searchParams.get('uddg');
+      if (real) {
+        return normalizeUrl(decodeURIComponent(real));
+      }
+    }
     if (!['http:', 'https:'].includes(parsed.protocol)) return null;
     if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') return null;
     return parsed.toString();
   } catch {
     return null;
   }
+}
+
+function domainFromUrl(raw) {
+  try {
+    const host = new URL(String(raw || '')).hostname.toLowerCase();
+    return host.startsWith('www.') ? host.slice(4) : host;
+  } catch {
+    return '';
+  }
+}
+
+function endsWithAny(host, roots) {
+  const h = String(host || '').toLowerCase();
+  return roots.some((root) => h === root || h.endsWith(`.${root}`));
+}
+
+function isIndianTrustedDomain(host) {
+  return endsWithAny(host, TRUSTED_INDIAN_NEWS_DOMAINS);
+}
+
+function domainBoost(url, query) {
+  const host = domainFromUrl(url);
+  const q = String(query || '').toLowerCase();
+  const mentionsIndia = /\bindia\b|\bindian\b|\bdelhi\b|\bmodi\b|\bpakistan\b|\bchina\b/.test(q);
+  let boost = 0;
+  if (endsWithAny(host, TRUSTED_GLOBAL_NEWS_DOMAINS)) boost += 2;
+  if (isIndianTrustedDomain(host)) boost += mentionsIndia ? 4 : 3;
+  return boost;
+}
+
+function diversifySnippets(rows, limit) {
+  const sorted = [...(rows || [])].sort((a, b) => Number(b.score || 0) - Number(a.score || 0));
+  const byDomainCount = new Map();
+  const picked = [];
+
+  // Pass 1: enforce domain diversity (max 2 per domain).
+  for (const row of sorted) {
+    const domain = domainFromUrl(row.url) || 'unknown';
+    const count = byDomainCount.get(domain) || 0;
+    if (count >= 2) continue;
+    byDomainCount.set(domain, count + 1);
+    picked.push(row);
+    if (picked.length >= limit) break;
+  }
+
+  // Pass 2: ensure at least one trusted Indian source if available.
+  const hasIndian = picked.some((row) => isIndianTrustedDomain(domainFromUrl(row.url)));
+  if (!hasIndian) {
+    const indian = sorted.find((row) => isIndianTrustedDomain(domainFromUrl(row.url)));
+    if (indian) {
+      if (picked.length < limit) picked.push(indian);
+      else picked[picked.length - 1] = indian;
+    }
+  }
+
+  return picked.slice(0, limit);
 }
 
 async function fetchWithTimeout(url, opts = {}, timeoutMs = 10000) {
@@ -173,7 +263,7 @@ export default async function handler(req, res) {
           url: item.url,
           source: item.source,
           text,
-          score: scoreSnippet(text, query),
+          score: scoreSnippet(text, query) + domainBoost(item.url, query),
         });
       } catch {
         // ignore source failures and continue with others
@@ -181,8 +271,7 @@ export default async function handler(req, res) {
       if (snippets.length >= limit) break;
     }
 
-    snippets.sort((a, b) => Number(b.score || 0) - Number(a.score || 0));
-    return res.status(200).json({ snippets: snippets.slice(0, limit) });
+    return res.status(200).json({ snippets: diversifySnippets(snippets, limit) });
   } catch (err) {
     return res.status(err.status || 500).json({
       error: err.message || 'Web retrieval error',
