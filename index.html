@@ -937,7 +937,7 @@ setMode(mode);
 // ── DROPDOWN ──
 var msel=document.getElementById('msel');
 const USE_ORDER=['coding','reasoning','vision','audio','video','embedding','translation','safety','autonomous','tts','math'];
-const GITHUB_MODEL_PREFIXES=['openai/','deepseek-ai/','xai/','microsoft/','cohere/','ai21/','mistralai/','meta/'];
+const GITHUB_MODEL_IDS=['openai/gpt-4.1-mini'];
 function useLabel(tags){
   const list=Array.isArray(tags)?tags:[];
   const ordered=[
@@ -988,7 +988,7 @@ function getModelGroupLabel(m){
 
 function usesGitHubModels(modelId){
   const id=String(modelId||'').toLowerCase();
-  return GITHUB_MODEL_PREFIXES.some(prefix=>id.startsWith(prefix));
+  return GITHUB_MODEL_IDS.includes(id);
 }
 
 function getModelProviderLabel(model){

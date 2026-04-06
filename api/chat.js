@@ -1,19 +1,10 @@
 // Vercel Serverless Function — /api/chat
 // Routes to NVIDIA or GitHub Models based on the selected model id.
-const GITHUB_MODEL_PREFIXES = [
-  'openai/',
-  'deepseek-ai/',
-  'xai/',
-  'microsoft/',
-  'cohere/',
-  'ai21/',
-  'mistralai/',
-  'meta/',
-];
+const GITHUB_MODEL_IDS = ['openai/gpt-4.1-mini'];
 
 function usesGitHubModels(modelId) {
   const id = String(modelId || '').toLowerCase();
-  return GITHUB_MODEL_PREFIXES.some((prefix) => id.startsWith(prefix));
+  return GITHUB_MODEL_IDS.includes(id);
 }
 
 export default async function handler(req, res) {
