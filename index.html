@@ -393,6 +393,12 @@ select#msel option{background:#0a120a;color:var(--text)}
   background:transparent;border:1px solid var(--border2);color:var(--textd);
   font-family:'Share Tech Mono',monospace;font-size:8px;padding:3px 6px;border-radius:2px;cursor:pointer;
 }
+.msg-meta{display:flex;gap:6px;align-items:center;margin-top:7px}
+.msg-token{
+  border:1px solid var(--border2);border-radius:2px;padding:2px 6px;
+  font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:.4px;color:var(--textd);
+}
+.msg.user .msg-token{border-color:var(--g2);color:var(--g)}
 .msg-action.on{border-color:var(--g);color:var(--g)}
 .msg-action:active{border-color:var(--g2);color:var(--g)}
 .cmp-wrap{margin-top:8px;border:1px solid var(--border2);border-radius:var(--r);background:#081008;padding:8px}
@@ -521,7 +527,6 @@ textarea#ti::placeholder{color:var(--textdd)}
     <div class="logo-hex">NIM</div>
     <div>
       <div class="logo-name">NIM CHAT</div>
-      <div class="logo-sub">NVIDIA FREE ENDPOINTS</div>
     </div>
   </div>
   <button class="chat-toggle" id="chatToggle" type="button" onclick="toggleDrawer()">☰ Chats</button>
@@ -542,7 +547,6 @@ textarea#ti::placeholder{color:var(--textdd)}
     <span class="lbl">MODEL</span>
     <select id="msel" onchange="onMC()"></select>
   </div>
-  <div class="mbadge" id="mbadge"><span style="color:var(--text)">Select a model</span></div>
   <div class="mem-row">
     <button type="button" id="memScopeBtn" class="mem-pill" onclick="toggleMemoryScope()">Memory: <strong>Current Chat</strong></button>
     <button type="button" id="ragChatBtn" class="mem-pill" onclick="toggleChatRag()">RAG: <strong>ON</strong></button>
@@ -566,7 +570,6 @@ textarea#ti::placeholder{color:var(--textdd)}
       <div class="auth-note" id="authNote">Login/signup to save chats for 30 days.</div>
     </div>
   </div>
-  <div class="rate-note">⚡ Free: 40 req/min · API key server-side via Vercel env</div>
 </div>
 
 <!-- MESSAGES -->
@@ -889,6 +892,7 @@ function onMC(){
   var m=MODELS[msel.value];
   if(!m)return;
   var badge=document.getElementById('mbadge');
+  if(!badge) return;
   badge.innerHTML='';
   var span=document.createElement('span');
   span.style.cssText='color:var(--text);flex:1;font-size:9px';
@@ -1536,6 +1540,7 @@ function fillChatFromMessages(rows){
       content:r.content,
       model_id:r.model_id||null,
       created_at:r.created_at||null,
+      token_est:Number(r.token_est||r.token_estimate||0) || estimateTokens(r.content),
       feedback:r.feedback||null,
       pinned:!!r.pinned
     };
@@ -1546,7 +1551,7 @@ function fillChatFromMessages(rows){
   rows.forEach(function(r){
     var role=r.role==='assistant'?'ass':(r.role==='user'?'user':'ass');
     var m=MODEL_BY_ID[r.model_id||''];
-    addMsg(role,r.content,role==='ass'?(m?m.name:'AI'):null,{messageId:r.id||null,pinned:!!r.pinned,feedback:r.feedback||null});
+    addMsg(role,r.content,role==='ass'?(m?m.name:'AI'):null,{messageId:r.id||null,pinned:!!r.pinned,feedback:r.feedback||null,tokenEstimate:(Number(r.token_est||r.token_estimate||0) || estimateTokens(r.content))});
     hist.push({role:r.role==='assistant'?'assistant':r.role,content:r.content});
   });
   if(!rows.length)c.appendChild(buildWelcome());
@@ -1968,8 +1973,18 @@ function addMsg(role,content,mn,meta){
     bbl.appendChild(tg);
   }
   var inner=document.createElement('div');
+  inner.className='msg-body';
   inner.innerHTML=fmt(content);
   bbl.appendChild(inner);
+
+  var tokenRow=document.createElement('div');
+  tokenRow.className='msg-meta';
+  var tokenChip=document.createElement('span');
+  tokenChip.className='msg-token';
+  var tok=(meta && Number.isFinite(Number(meta.tokenEstimate))) ? Number(meta.tokenEstimate) : estimateTokens(content);
+  tokenChip.textContent='~'+Math.max(0,Math.round(tok))+' tok';
+  tokenRow.appendChild(tokenChip);
+  bbl.appendChild(tokenRow);
 
   if(authUser && meta && meta.messageId){
     var actions=document.createElement('div');
@@ -2212,13 +2227,43 @@ async function postChat(payload){
 
 function getMessageContentNode(msgEl){
   if(!msgEl) return null;
-  return msgEl.querySelector('.bbl > div:last-child');
+  return msgEl.querySelector('.msg-body');
+}
+
+function getMessageTokenNode(msgEl){
+  if(!msgEl) return null;
+  return msgEl.querySelector('.msg-token');
+}
+
+function estimateTokens(content){
+  var raw='';
+  if(Array.isArray(content)){
+    raw=content.map(function(part){
+      if(!part || typeof part!=='object') return String(part||'');
+      if(part.type==='text') return String(part.text||'');
+      if(part.type==='image_url') return '[image]';
+      return JSON.stringify(part);
+    }).join('\n');
+  }else{
+    raw=String(content||'');
+  }
+  raw=raw.trim();
+  if(!raw) return 0;
+  return Math.max(1,Math.ceil(raw.length/4));
+}
+
+function setMessageTokenEstimate(msgEl,textOrToken){
+  var node=getMessageTokenNode(msgEl);
+  if(!node) return;
+  var tok=typeof textOrToken==='number' ? textOrToken : estimateTokens(textOrToken);
+  node.textContent='~'+Math.max(0,Math.round(tok))+' tok';
 }
 
 function updateStreamBubble(msgEl,text){
   var node=getMessageContentNode(msgEl);
   if(!node) return;
   node.innerHTML=fmt(text||'');
+  setMessageTokenEstimate(msgEl,text||'');
   sc();
 }
 
@@ -2397,9 +2442,10 @@ async function go(){
   document.getElementById('cc').textContent='0 chars';
   document.getElementById('sbtn').disabled=true;
 
-  var userMsgEl=addMsg('user',userDisplayText||txt,null,{messageId:null});
+  var userTokenEstimate=estimateTokens(userPayloadContent || userDisplayText || txt);
+  var userMsgEl=addMsg('user',userDisplayText||txt,null,{messageId:null,tokenEstimate:userTokenEstimate});
   hist.push({role:'user',content:userDisplayText||txt});
-  activeMessagesCache.push({role:'user',content:userDisplayText||txt,model_id:null,created_at:new Date().toISOString()});
+  activeMessagesCache.push({role:'user',content:userDisplayText||txt,model_id:null,created_at:new Date().toISOString(),token_est:userTokenEstimate});
   saveBootCache();
   try{
     var savedUser=await saveMessage('user',userDisplayText||txt,null);
@@ -2463,7 +2509,7 @@ async function go(){
           addSys('ERROR '+res.status+': '+(data.detail||data.message||JSON.stringify(data)),true);
         }
       } else {
-        var streamEl=addMsg('ass','',m.name,{webUsed:lastWebSnippetsUsed.length>0,messageId:null});
+        var streamEl=addMsg('ass','',m.name,{webUsed:lastWebSnippetsUsed.length>0,messageId:null,tokenEstimate:0});
         updateStreamBubble(streamEl,'AI is thinking, rukjao...');
         var ctype=String(res.headers.get('content-type')||'').toLowerCase();
         var reply='';
@@ -2481,7 +2527,7 @@ async function go(){
         reply=appendSourceCitations(reply,lastWebSnippetsUsed);
         updateStreamBubble(streamEl,reply);
         hist.push({role:'assistant',content:reply});
-        activeMessagesCache.push({role:'assistant',content:reply,model_id:m.id,created_at:new Date().toISOString()});
+        activeMessagesCache.push({role:'assistant',content:reply,model_id:m.id,created_at:new Date().toISOString(),token_est:estimateTokens(reply)});
         saveBootCache();
         try{
           var savedAss=await saveMessage('assistant',reply,m.id);
@@ -2529,7 +2575,7 @@ function xpdf(){
   html+='Exported: '+date+' | Session: '+msgN+' msgs | All-time calls: '+s.total+' | Models used: '+usedCount+'</div>';
   allM.forEach(function(el,idx){
     var role=el.classList.contains('user')?'user':'ass';
-    var inner=el.querySelector('.bbl > div:last-child');
+    var inner=el.querySelector('.msg-body');
     var cnt=inner?inner.innerHTML:'';
     var lbl=role==='user'?'You':m.name;
     var ts=el.getAttribute('data-ts')||date;
@@ -2666,7 +2712,7 @@ document.addEventListener('keydown',function(e){
   }
   if(e.ctrlKey && e.shiftKey && e.key.toUpperCase()==='C'){
     e.preventDefault();
-    var nodes=[].slice.call(document.querySelectorAll('.msg.ass .bbl > div:last-child'));
+    var nodes=[].slice.call(document.querySelectorAll('.msg.ass .msg-body'));
     var lastAss=nodes.length?nodes[nodes.length-1]:null;
     if(lastAss && navigator.clipboard){
       navigator.clipboard.writeText(lastAss.innerText||'').then(function(){toast('Copied!');}).catch(function(){});
