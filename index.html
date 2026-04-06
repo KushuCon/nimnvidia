@@ -2373,7 +2373,7 @@ function createSmoothTyper(msgEl){
       else if(remain>60) step=3;
       else if(remain>20) step=2;
       shown+=target.slice(shown.length,shown.length+step);
-      updateStreamBubble(msgEl,shown);
+      updateStreamBubble(msgEl,shown,{skipTokenEstimate:true});
       rafId=requestAnimationFrame(tick);
       return;
     }
@@ -2391,7 +2391,7 @@ function createSmoothTyper(msgEl){
         cancelAnimationFrame(rafId);
         rafId=0;
       }
-      updateStreamBubble(msgEl,shown);
+      updateStreamBubble(msgEl,shown,{skipTokenEstimate:true});
     }
   };
 }
@@ -2580,7 +2580,7 @@ async function go(){
           try{dataOk=await res.json();}catch(_){dataOk={};}
           reply=(dataOk.choices&&dataOk.choices[0]&&dataOk.choices[0].message&&dataOk.choices[0].message.content)||'(empty)';
           reply=sanitizeAssistantOutput(reply);
-          updateStreamBubble(streamEl,reply);
+          updateStreamBubble(streamEl,reply,{skipTokenEstimate:true});
         }
         if(!reply) reply='(empty)';
         reply=sanitizeAssistantOutput(reply);
