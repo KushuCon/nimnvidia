@@ -1,5 +1,44 @@
 // Vercel Serverless Function — /api/chat
 // Routes chat requests to the right upstream provider by model id.
+const GITHUB_CHAT_MODEL_IDS = new Set([
+  'xai/grok-3-mini',
+  'openai/gpt-5',
+  'openai/gpt-5-mini',
+  'openai/gpt-5-nano',
+  'openai/gpt-5-chat',
+  'openai/gpt-4.1',
+  'openai/gpt-4.1-mini',
+  'openai/gpt-4.1-nano',
+  'openai/gpt-4o',
+  'openai/gpt-4o-mini',
+  'openai/o1',
+  'openai/o1-mini',
+  'openai/o1-preview',
+  'openai/o3',
+  'openai/o3-mini',
+  'openai/o4-mini',
+  'deepseek/deepseek-v3-0324',
+  'deepseek/deepseek-r1',
+  'deepseek/deepseek-r1-0528',
+  'meta/meta-llama-3.1-8b-instruct',
+  'meta/meta-llama-3.1-405b-instruct',
+  'meta/llama-3.2-11b-vision-instruct',
+  'meta/llama-3.2-90b-vision-instruct',
+  'meta/llama-3.3-70b-instruct',
+  'microsoft/mai-ds-r1',
+  'microsoft/phi-4',
+  'microsoft/phi-4-mini-instruct',
+  'microsoft/phi-4-mini-reasoning',
+  'microsoft/phi-4-reasoning',
+  'cohere/cohere-command-r-08-2024',
+  'cohere/cohere-command-r-plus-08-2024',
+  'cohere/cohere-command-a',
+  'mistral-ai/codestral-2501',
+  'mistral-ai/ministral-3b',
+  'xai/grok-3',
+  'ai21/jamba-1.5-large'
+]);
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -8,7 +47,8 @@ export default async function handler(req, res) {
   try {
     const payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const modelId = String((payload && payload.model) || '');
-    const useGithubModels = modelId.startsWith('xai/');
+    const modelKey = modelId.toLowerCase();
+    const useGithubModels = GITHUB_CHAT_MODEL_IDS.has(modelKey);
 
     const endpoint = useGithubModels
       ? (process.env.GITHUB_API_ENDPOINT || 'https://models.github.ai/inference').replace(/\/$/, '') + '/chat/completions'
