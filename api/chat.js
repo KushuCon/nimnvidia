@@ -1,6 +1,41 @@
 // Vercel Serverless Function — /api/chat
 // Routes to NVIDIA or GitHub Models based on the selected model id.
-const GITHUB_MODEL_IDS = ['openai/gpt-4.1-mini'];
+const GITHUB_MODEL_IDS = [
+  'openai/gpt-5',
+  'openai/gpt-4o',
+  'openai/gpt-4.1',
+  'openai/gpt-4.1-mini',
+  'openai/gpt-4o-mini',
+  'openai/gpt-5-chat',
+  'openai/gpt-5-mini',
+  'openai/gpt-5-nano',
+  'openai/gpt-4.1-nano',
+  'openai/o1-mini',
+  'openai/o3-mini',
+  'openai/o1',
+  'openai/o3',
+  'deepseek-ai/deepseek-v3-0324',
+  'deepseek-ai/deepseek-r1',
+  'xai/grok-3',
+  'xai/grok-3-mini',
+  'microsoft/phi-4-reasoning',
+  'microsoft/phi-4',
+  'microsoft/mai-ds-r1',
+  'microsoft/phi-4-mini-instruct',
+  'microsoft/phi-4-mini-reasoning',
+  'microsoft/phi-4-multimodal-instruct',
+  'cohere/command-r-08-2024',
+  'cohere/command-a',
+  'ai21/jamba-1.5-large',
+  'meta/llama-4-maverick-17b-128e-instruct-fp8',
+  'meta/llama-3.2-90b-vision-instruct',
+  'meta/llama-3.1-405b-instruct',
+  'meta/llama-3.3-70b-instruct',
+  'meta/llama-3.1-8b-instruct',
+  'meta/llama-3.2-11b-vision-instruct',
+  'mistralai/mistral-medium-3-25.05',
+  'mistralai/ministral-3b',
+];
 
 function usesGitHubModels(modelId) {
   const id = String(modelId || '').toLowerCase();
