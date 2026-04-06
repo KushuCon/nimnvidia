@@ -738,6 +738,9 @@ const MODELS=[
   {id:"z-ai/glm-4.7",name:"GLM-4.7",params:"~70B",pv:70,
    desc:"Multilingual agentic coding partner by Z.ai. Stronger reasoning, tool use, UI agent skills.",
    tags:["coding","reasoning"]},
+  {id:"xai/grok-3-mini",name:"Grok 3 Mini",params:"Mini",pv:71,
+   desc:"Open reasoning model with 'thinking' mode. 256K context, INT4 quantization, enhanced tool use.",
+   tags:["reasoning","coding","math"]},
 
   // ── 17B×128 MoE ──
   {id:"meta/llama-4-maverick-17b-128e-instruct",name:"Llama 4 Maverick 17B×128E",params:"17B×128 MoE",pv:17*128,
@@ -862,14 +865,21 @@ function modelUploadCapabilityLabel(m){
   return 'upload not available';
 }
 
+function modelProviderLabel(m){
+  var id=String((m && m.id) || '').toLowerCase();
+  if(id.startsWith('xai/')) return 'GitHub';
+  return 'NVIDIA';
+}
+
 MODELS.forEach(function(m,i){
   var o=document.createElement('option');
   o.value=i;
   var use=useLabel(m.tags);
   const chatOk=isChatCapableModel(m);
   var upLabel=modelUploadCapabilityLabel(m);
-  o.textContent='['+m.params+'] '+m.name+' - '+(use||'general')+' | '+upLabel+(chatOk?'':' [NO CHAT]');
-  o.title='Best for: '+(use||'general')+'. '+m.desc+' Upload: '+upLabel+(chatOk?'':' (Not available for chat endpoint)');
+  var provider=modelProviderLabel(m);
+  o.textContent='['+provider+'] ['+m.params+'] '+m.name+' - '+(use||'general')+' | '+upLabel+(chatOk?'':' [NO CHAT]');
+  o.title='Provider: '+provider+'. Best for: '+(use||'general')+'. '+m.desc+' Upload: '+upLabel+(chatOk?'':' (Not available for chat endpoint)');
   o.disabled=!chatOk;
   msel.appendChild(o);
 });
@@ -965,7 +975,8 @@ const MODEL_CUTOFFS={
   'minimaxai/minimax-m2.1':'2025-01-01',
   'stepfun-ai/step-3.5-flash':'2025-01-01',
   'ibm/granite-3.3-8b-instruct':'2024-06-01',
-  'z-ai/glm-4.7':'2025-01-01'
+  'z-ai/glm-4.7':'2025-01-01',
+  'xai/grok-3-mini':'2025-01-01'
 };
 
 const WEB_TRIGGER_TERMS=[

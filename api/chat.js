@@ -1,18 +1,32 @@
 // Vercel Serverless Function — /api/chat
-// Yeh NVIDIA_API_KEY env variable se lega, browser ko expose nahi hogi
+// Routes chat requests to the right upstream provider by model id.
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const apiKey = process.env.NVIDIA_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: 'NVIDIA_API_KEY not set in environment variables' });
-  }
-
   try {
     const payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+    const modelId = String((payload && payload.model) || '');
+    const useGithubModels = modelId.startsWith('xai/');
+
+    const endpoint = useGithubModels
+      ? (process.env.GITHUB_API_ENDPOINT || 'https://models.github.ai/inference').replace(/\/$/, '') + '/chat/completions'
+      : 'https://integrate.api.nvidia.com/v1/chat/completions';
+
+    const apiKey = useGithubModels
+      ? process.env.GITHUB_API_MODEL_KEY
+      : process.env.NVIDIA_API_KEY;
+
+    if (!apiKey) {
+      return res.status(500).json({
+        error: useGithubModels
+          ? 'GITHUB_API_MODEL_KEY not set in environment variables'
+          : 'NVIDIA_API_KEY not set in environment variables',
+      });
+    }
+
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
