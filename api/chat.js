@@ -75,13 +75,21 @@ export default async function handler(req, res) {
       headers['Accept'] = payload && payload.stream === true ? 'text/event-stream' : 'application/json';
     }
 
+    const upstreamPayload = { ...(payload || {}) };
+    if (useGitHubModels && Object.prototype.hasOwnProperty.call(upstreamPayload, 'max_tokens')) {
+      if (!Object.prototype.hasOwnProperty.call(upstreamPayload, 'max_completion_tokens')) {
+        upstreamPayload.max_completion_tokens = upstreamPayload.max_tokens;
+      }
+      delete upstreamPayload.max_tokens;
+    }
+
     const response = await fetch(endpoint, {
       method: 'POST',
       headers,
-      body: JSON.stringify(payload),
+      body: JSON.stringify(upstreamPayload),
     });
 
-    if (payload && payload.stream === true) {
+    if (upstreamPayload && upstreamPayload.stream === true) {
       if (!response.ok) {
         const rawErr = await response.text();
         let dataErr = null;
