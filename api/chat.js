@@ -52,7 +52,7 @@ export default async function handler(req, res) {
     const modelId = String(payload && payload.model || '').trim();
     const useGitHubModels = usesGitHubModels(modelId);
     const endpoint = useGitHubModels
-      ? 'https://models.github.ai/inference/chat/completions'
+      ? 'https://models.github.ai/inference/chat/completions?api-version=2024-12-01-preview'
       : 'https://integrate.api.nvidia.com/v1/chat/completions';
     const apiKey = useGitHubModels
       ? process.env.GITHUB_API_MODEL_KEY
