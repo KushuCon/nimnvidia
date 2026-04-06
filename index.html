@@ -2270,11 +2270,13 @@ function setMessageTokenEstimate(msgEl,textOrToken){
   node.textContent='~'+Math.max(0,Math.round(tok))+' tok';
 }
 
-function updateStreamBubble(msgEl,text){
+function updateStreamBubble(msgEl,text,opts){
   var node=getMessageContentNode(msgEl);
   if(!node) return;
   node.innerHTML=fmt(text||'');
-  setMessageTokenEstimate(msgEl,text||'');
+  if(!(opts && opts.skipTokenEstimate)){
+    setMessageTokenEstimate(msgEl,text||'');
+  }
   sc();
 }
 
@@ -2521,7 +2523,8 @@ async function go(){
         }
       } else {
         var streamEl=addMsg('ass','',m.name,{webUsed:lastWebSnippetsUsed.length>0,messageId:null,tokenEstimate:0});
-        updateStreamBubble(streamEl,'AI is thinking, rukjao...');
+        updateStreamBubble(streamEl,'AI is thinking, rukjao...',{skipTokenEstimate:true});
+        setMessageTokenEstimate(streamEl,0);
         var ctype=String(res.headers.get('content-type')||'').toLowerCase();
         var reply='';
         if(ctype.includes('text/event-stream')){
