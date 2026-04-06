@@ -604,7 +604,7 @@ textarea#ti::placeholder{color:var(--textdd)}
 <script>
 // ══════════════════════════════════════════
 // HARDCODED KEY — fill this OR use Vercel env
-// In Vercel: add env var NVIDIA_API_KEY
+// In Vercel: add env var NVIDIA_API_KEY or GITHUB_API_MODEL_KEY
 // Then in your page: <script>window.NVIDIA_API_KEY="..."<\/script>
 // ══════════════════════════════════════════
 const HARD_KEY = "";
@@ -801,6 +801,11 @@ const MODELS=[
   {id:"moonshotai/kimi-k2-instruct-0905",name:"Kimi K2 Instruct 0905 ~1T",params:"~1T MoE",pv:1000,
    desc:"Updated Kimi K2: extended context window, enhanced reasoning and tool calling performance.",
    tags:["reasoning","coding"]},
+
+  // ── GitHub Models ──
+  {id:"openai/gpt-4.1-mini",name:"GPT-4.1 Mini (GitHub)",params:"~small",pv:4.1,
+   desc:"GitHub Models hosted GPT-4.1 mini via PAT. Good general chat, coding, and reasoning.",
+   tags:["reasoning","coding"]},
 ];
 
 // sort ascending
@@ -956,6 +961,7 @@ const MODEL_CUTOFFS={
   'moonshotai/kimi-k2-thinking':'2025-01-01',
   'moonshotai/kimi-k2-instruct':'2025-01-01',
   'moonshotai/kimi-k2-instruct-0905':'2025-01-01',
+  'openai/gpt-4.1-mini':'2025-04-01',
   'moonshotai/kimi-k2.5':'2024-04-01',
   'moonshotai/kimi-k2':'2023-02-01',
   'minimaxai/minimax-m2.1':'2025-01-01',
