@@ -1,5 +1,21 @@
 // Vercel Serverless Function — /api/chat
 // Routes to NVIDIA or GitHub Models based on the selected model id.
+const GITHUB_MODEL_PREFIXES = [
+  'openai/',
+  'deepseek-ai/',
+  'xai/',
+  'microsoft/',
+  'cohere/',
+  'ai21/',
+  'mistralai/',
+  'meta/',
+];
+
+function usesGitHubModels(modelId) {
+  const id = String(modelId || '').toLowerCase();
+  return GITHUB_MODEL_PREFIXES.some((prefix) => id.startsWith(prefix));
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -8,7 +24,7 @@ export default async function handler(req, res) {
   try {
     const payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const modelId = String(payload && payload.model || '').trim();
-    const useGitHubModels = modelId === 'openai/gpt-4.1-mini';
+    const useGitHubModels = usesGitHubModels(modelId);
     const endpoint = useGitHubModels
       ? 'https://models.github.ai/inference/chat/completions'
       : 'https://integrate.api.nvidia.com/v1/chat/completions';
