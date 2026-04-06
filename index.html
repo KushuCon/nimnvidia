@@ -235,7 +235,7 @@ body.loading::after{z-index:9988}
 select#msel{
   flex:1;background:var(--bg3);color:var(--g);
   border:1px solid var(--border2);border-radius:var(--r);
-  padding:7px 28px 7px 9px;font-family:'Share Tech Mono',monospace;font-size:13px;
+  padding:7px 28px 7px 9px;font-family:'Share Tech Mono',monospace;font-size:11px;
   outline:none;cursor:pointer;min-width:0;
   -webkit-appearance:none;appearance:none;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%234a7400'/%3E%3C/svg%3E");
@@ -604,7 +604,7 @@ textarea#ti::placeholder{color:var(--textdd)}
 <script>
 // ══════════════════════════════════════════
 // HARDCODED KEY — fill this OR use Vercel env
-// In Vercel: add env var NVIDIA_API_KEY or GITHUB_API_MODEL_KEY
+// In Vercel: add env var NVIDIA_API_KEY
 // Then in your page: <script>window.NVIDIA_API_KEY="..."<\/script>
 // ══════════════════════════════════════════
 const HARD_KEY = "";
@@ -665,117 +665,10 @@ const MODELS=[
    desc:"Google edge AI: text + audio + image input. Stronger than E2B while staying lightweight.",
    tags:["vision","audio","reasoning"]},
 
-  // ── GitHub Models / OpenAI / cross-vendor catalog ──
-  {id:"openai/gpt-5",name:"OpenAI gpt-5",params:"frontier",pv:5.00,
-   desc:"gpt-5 is designed for logic-heavy and multi-step tasks.",
-   tags:["reasoning","coding"]},
-  {id:"openai/gpt-4o",name:"OpenAI GPT-4o",params:"frontier",pv:4.50,
-   desc:"OpenAI's most advanced multimodal model in the gpt-4o family.",
-   tags:["vision","reasoning"]},
-  {id:"deepseek-ai/deepseek-v3-0324",name:"DeepSeek-V3-0324",params:"frontier",pv:3.24,
-   desc:"DeepSeek-V3-0324 demonstrates notable improvements over DeepSeek-V3.",
-   tags:["reasoning","coding"]},
-  {id:"openai/gpt-4.1",name:"OpenAI GPT-4.1",params:"frontier",pv:4.10,
-   desc:"GPT-4.1 outperforms GPT-4o across the board, with major gains in coding.",
-   tags:["reasoning","coding"]},
-  {id:"xai/grok-3",name:"Grok 3",params:"frontier",pv:3.30,
-   desc:"Grok 3 is xAI's debut model, pretrained at supermassive scale.",
-   tags:["reasoning","coding"]},
-  {id:"deepseek-ai/deepseek-r1",name:"DeepSeek-R1",params:"frontier",pv:3.11,
-   desc:"DeepSeek-R1 excels at reasoning tasks using a step-by-step training process.",
-   tags:["reasoning","math","coding"]},
-  {id:"openai/gpt-4.1-mini",name:"OpenAI GPT-4.1-mini",params:"small",pv:4.11,
-   desc:"GPT-4.1-mini outperforms GPT-4o-mini across the board.",
-   tags:["reasoning","coding"]},
-  {id:"openai/gpt-4o-mini",name:"OpenAI GPT-4o mini",params:"small",pv:4.06,
-   desc:"An affordable, efficient AI solution for diverse text and image tasks.",
-   tags:["vision","reasoning"]},
-  {id:"openai/gpt-5-chat",name:"OpenAI gpt-5-chat (preview)",params:"frontier",pv:5.01,
-   desc:"gpt-5-chat is an advanced, natural, multimodal, and context-aware conversation model.",
-   tags:["reasoning","coding"]},
-  {id:"openai/gpt-5-mini",name:"OpenAI gpt-5-mini",params:"small",pv:5.02,
-   desc:"gpt-5-mini is a lightweight version for cost-sensitive applications.",
-   tags:["reasoning","coding"]},
-  {id:"microsoft/phi-4-reasoning",name:"Phi-4-reasoning",params:"frontier",pv:4.02,
-   desc:"State-of-the-art open-weight reasoning model.",
-   tags:["reasoning","math","coding"]},
-  {id:"openai/gpt-5-nano",name:"OpenAI gpt-5-nano",params:"tiny",pv:5.03,
-   desc:"gpt-5-nano is optimized for speed, ideal for applications requiring low latency.",
-   tags:["reasoning","coding"]},
-  {id:"microsoft/phi-4",name:"Phi-4",params:"14B",pv:4.03,
-   desc:"Phi-4 14B, a highly capable model for low latency scenarios.",
-   tags:["reasoning","coding"]},
-  {id:"openai/gpt-4.1-nano",name:"OpenAI GPT-4.1-nano",params:"tiny",pv:4.12,
-   desc:"gpt-4.1-nano provides gains in coding, instruction following, and long-context handling.",
-   tags:["reasoning","coding"]},
-  {id:"microsoft/phi-4-multimodal-instruct",name:"Phi-4-multimodal-instruct",params:"small",pv:5.00,
-   desc:"First small multimodal model to have 3 modality inputs (text, audio, image).",
-   tags:["vision","audio","reasoning"]},
-  {id:"xai/grok-3-mini",name:"Grok 3 Mini",params:"small",pv:3.31,
-   desc:"Grok 3 Mini is a lightweight model that thinks before responding.",
-   tags:["reasoning","coding"]},
-  {id:"microsoft/mai-ds-r1",name:"MAI-DS-R1",params:"frontier",pv:4.04,
-   desc:"MAI-DS-R1 is a DeepSeek-R1 reasoning model post-trained by Microsoft AI.",
-   tags:["reasoning","math","coding"]},
-  {id:"microsoft/phi-4-mini-instruct",name:"Phi-4-mini-instruct",params:"3.8B",pv:4.05,
-   desc:"Small language model outperforming larger models in reasoning, math, coding, and function calling.",
-   tags:["reasoning","coding"]},
-  {id:"microsoft/phi-4-mini-reasoning",name:"Phi-4-mini-reasoning",params:"small",pv:4.06,
-   desc:"Lightweight math reasoning model optimized for multi-step problem solving.",
-   tags:["reasoning","math"]},
-  {id:"openai/o1-mini",name:"OpenAI o1-mini",params:"small",pv:1.01,
-   desc:"Smaller, faster, and 80% cheaper than o1-preview.",
-   tags:["reasoning","coding"]},
-  {id:"openai/o3-mini",name:"OpenAI o3-mini",params:"small",pv:3.01,
-   desc:"o3-mini includes the o1 features with significant cost-efficiencies.",
-   tags:["reasoning","coding"]},
-  {id:"openai/o1",name:"OpenAI o1",params:"frontier",pv:1.10,
-   desc:"Focused on advanced reasoning and solving complex problems.",
-   tags:["reasoning","math"]},
-  {id:"openai/o3",name:"OpenAI o3",params:"frontier",pv:3.10,
-   desc:"o3 includes significant improvements on quality and safety.",
-   tags:["reasoning","coding"]},
-  {id:"cohere/command-r-08-2024",name:"Cohere Command R 08-2024",params:"frontier",pv:0.82,
-   desc:"Command R is a scalable generative model targeting RAG and Tool Use.",
-   tags:["reasoning","coding"]},
-  {id:"cohere/command-a",name:"Cohere Command A",params:"frontier",pv:0.83,
-   desc:"Command A is a highly efficient generative model that excels at agentic and multilingual use cases.",
-   tags:["reasoning","coding"]},
-  {id:"meta/llama-4-maverick-17b-128e-instruct-fp8",name:"Llama 4 Maverick 17B 128E Instruct FP8",params:"17B×128E",pv:17.12,
-   desc:"Llama 4 Maverick is great at precise image understanding and creative writing.",
-   tags:["vision","reasoning"]},
-  {id:"meta/llama-3.2-90b-vision-instruct",name:"Llama-3.2-90B-Vision-Instruct",params:"90B",pv:90.20,
-   desc:"Advanced image reasoning capabilities for visual understanding agentic apps.",
-   tags:["vision","reasoning"]},
-  {id:"meta/llama-3.1-405b-instruct",name:"Meta-Llama-3.1-405B-Instruct",params:"405B",pv:405.10,
-   desc:"The Llama 3.1 instruction tuned text only models are optimized for multilingual dialogue.",
-   tags:["reasoning","coding"]},
-  {id:"mistralai/mistral-medium-3-25.05",name:"Mistral Medium 3 (25.05)",params:"~123B",pv:123.05,
-   desc:"Mistral Medium 3 is a highly capable model with state-of-the-art reasoning, knowledge, coding and vision capabilities.",
-   tags:["vision","reasoning","coding"]},
-  {id:"meta/llama-3.3-70b-instruct",name:"Llama-3.3-70B-Instruct",params:"70B",pv:70.30,
-   desc:"Llama 3.3 70B Instruct offers enhanced reasoning, math, and instruction following.",
-   tags:["reasoning","coding","math"]},
-  {id:"mistralai/ministral-3b",name:"Ministral 3B",params:"3B",pv:3.00,
-   desc:"Ministral 3B is a small language model optimized for edge computing and on-device applications.",
-   tags:["reasoning","coding"]},
-  {id:"meta/llama-3.1-8b-instruct",name:"Meta-Llama-3.1-8B-Instruct",params:"8B",pv:8.10,
-   desc:"The Llama 3.1 instruction tuned text only models are optimized for multilingual dialogue use cases.",
-   tags:["reasoning","coding"]},
-  {id:"meta/llama-3.2-11b-vision-instruct",name:"Llama-3.2-11B-Vision-Instruct",params:"11B",pv:11.20,
-   desc:"Excels in image reasoning capabilities on high-res images for visual understanding apps.",
-   tags:["vision","reasoning"]},
-  {id:"ai21/jamba-1.5-large",name:"AI21 Jamba 1.5 Large",params:"398B",pv:1.50,
-   desc:"A multilingual model offering a long context window, function calling, structured output, and grounded outputs.",
-   tags:["reasoning","coding"]},
-  {id:"microsoft/phi-4-mini-reasoning",name:"Phi-4-mini-reasoning",params:"small",pv:4.07,
-   desc:"Lightweight math reasoning model optimized for multi-step problem solving.",
-   tags:["reasoning","math"]},
-  {id:"microsoft/phi-4-multimodal-instruct",name:"Phi-4-multimodal-instruct",params:"small",pv:5.01,
-   desc:"First small multimodal model to have 3 modality inputs (text, audio, image), excelling in quality and efficiency.",
-   tags:["vision","audio","reasoning"]},
-
   // ── ~5B ──
+  {id:"microsoft/phi-4-multimodal-instruct",name:"Phi-4 Multimodal",params:"~5B",pv:5,
+   desc:"Microsoft open multimodal: high-quality reasoning from BOTH images and audio. Edge-capable.",
+   tags:["vision","audio","reasoning"]},
   /* {id:"nvidia/cosmos-predict1-5b",name:"Cosmos Predict 1",params:"5B",pv:5,
    desc:"Predicts future physics-aware video frames from image/short video. Physical AI simulation.",
    tags:["video","autonomous"]}, */
@@ -908,7 +801,6 @@ const MODELS=[
   {id:"moonshotai/kimi-k2-instruct-0905",name:"Kimi K2 Instruct 0905 ~1T",params:"~1T MoE",pv:1000,
    desc:"Updated Kimi K2: extended context window, enhanced reasoning and tool calling performance.",
    tags:["reasoning","coding"]},
-
 ];
 
 // sort ascending
@@ -937,42 +829,6 @@ setMode(mode);
 // ── DROPDOWN ──
 var msel=document.getElementById('msel');
 const USE_ORDER=['coding','reasoning','vision','audio','video','embedding','translation','safety','autonomous','tts','math'];
-const GITHUB_MODEL_IDS=[
-  'openai/gpt-5',
-  'openai/gpt-4o',
-  'openai/gpt-4.1',
-  'openai/gpt-4.1-mini',
-  'openai/gpt-4o-mini',
-  'openai/gpt-5-chat',
-  'openai/gpt-5-mini',
-  'openai/gpt-5-nano',
-  'openai/gpt-4.1-nano',
-  'openai/o1-mini',
-  'openai/o3-mini',
-  'openai/o1',
-  'openai/o3',
-  'deepseek-ai/deepseek-v3-0324',
-  'deepseek-ai/deepseek-r1',
-  'xai/grok-3',
-  'xai/grok-3-mini',
-  'microsoft/phi-4-reasoning',
-  'microsoft/phi-4',
-  'microsoft/mai-ds-r1',
-  'microsoft/phi-4-mini-instruct',
-  'microsoft/phi-4-mini-reasoning',
-  'microsoft/phi-4-multimodal-instruct',
-  'cohere/command-r-08-2024',
-  'cohere/command-a',
-  'ai21/jamba-1.5-large',
-  'meta/llama-4-maverick-17b-128e-instruct-fp8',
-  'meta/llama-3.2-90b-vision-instruct',
-  'meta/llama-3.1-405b-instruct',
-  'meta/llama-3.3-70b-instruct',
-  'meta/llama-3.1-8b-instruct',
-  'meta/llama-3.2-11b-vision-instruct',
-  'mistralai/mistral-medium-3-25.05',
-  'mistralai/ministral-3b'
-];
 function useLabel(tags){
   const list=Array.isArray(tags)?tags:[];
   const ordered=[
@@ -1003,51 +859,16 @@ function modelUploadCapabilityLabel(m){
   return 'upload not available';
 }
 
-function getModelGroupLabel(m){
-  const id=String(m && m.id || '').toLowerCase();
-  if(id.startsWith('openai/')) return 'OpenAI';
-  if(id.startsWith('deepseek-ai/')) return 'DeepSeek';
-  if(id.startsWith('xai/')) return 'xAI';
-  if(id.startsWith('microsoft/')) return 'Microsoft';
-  if(id.startsWith('cohere/')) return 'Cohere';
-  if(id.startsWith('ai21/')) return 'AI21';
-  if(id.startsWith('mistralai/')) return 'Mistral';
-  if(id.startsWith('meta/')) return 'Meta';
-  if(id.startsWith('google/')) return 'Google';
-  if(id.startsWith('ibm/')) return 'IBM';
-  if(id.startsWith('marin/')) return 'Marin';
-  if(id.startsWith('speakleash/')) return 'Other';
-  if(id.startsWith('nvidia/')) return 'NVIDIA';
-  return 'Other';
-}
-
-function usesGitHubModels(modelId){
-  const id=String(modelId||'').toLowerCase();
-  return GITHUB_MODEL_IDS.includes(id);
-}
-
-function getModelProviderLabel(model){
-  return usesGitHubModels(model && model.id) ? 'via GitHub' : 'via NVIDIA';
-}
-
-const modelGroups={};
 MODELS.forEach(function(m,i){
-  var groupLabel=getModelGroupLabel(m);
-  if(!modelGroups[groupLabel]){
-    modelGroups[groupLabel]=document.createElement('optgroup');
-    modelGroups[groupLabel].label=groupLabel;
-    msel.appendChild(modelGroups[groupLabel]);
-  }
   var o=document.createElement('option');
   o.value=i;
   var use=useLabel(m.tags);
   const chatOk=isChatCapableModel(m);
   var upLabel=modelUploadCapabilityLabel(m);
-  var providerLabel=getModelProviderLabel(m);
-  o.textContent='['+m.params+'] '+m.name+' - '+(use||'general')+' | '+upLabel+' | '+providerLabel+(chatOk?'':' [NO CHAT]');
-  o.title='Best for: '+(use||'general')+'. '+m.desc+' Upload: '+upLabel+' '+providerLabel+(chatOk?'':' (Not available for chat endpoint)');
+  o.textContent='['+m.params+'] '+m.name+' - '+(use||'general')+' | '+upLabel+(chatOk?'':' [NO CHAT]');
+  o.title='Best for: '+(use||'general')+'. '+m.desc+' Upload: '+upLabel+(chatOk?'':' (Not available for chat endpoint)');
   o.disabled=!chatOk;
-  modelGroups[groupLabel].appendChild(o);
+  msel.appendChild(o);
 });
 
 function isLikelyChatModel(m){
@@ -1135,7 +956,6 @@ const MODEL_CUTOFFS={
   'moonshotai/kimi-k2-thinking':'2025-01-01',
   'moonshotai/kimi-k2-instruct':'2025-01-01',
   'moonshotai/kimi-k2-instruct-0905':'2025-01-01',
-  'openai/gpt-4.1-mini':'2025-04-01',
   'moonshotai/kimi-k2.5':'2024-04-01',
   'moonshotai/kimi-k2':'2023-02-01',
   'minimaxai/minimax-m2.1':'2025-01-01',
