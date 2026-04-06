@@ -991,6 +991,10 @@ function usesGitHubModels(modelId){
   return GITHUB_MODEL_PREFIXES.some(prefix=>id.startsWith(prefix));
 }
 
+function getModelProviderLabel(model){
+  return usesGitHubModels(model && model.id) ? 'via GitHub' : 'via NVIDIA';
+}
+
 const modelGroups={};
 MODELS.forEach(function(m,i){
   var groupLabel=getModelGroupLabel(m);
@@ -1004,8 +1008,9 @@ MODELS.forEach(function(m,i){
   var use=useLabel(m.tags);
   const chatOk=isChatCapableModel(m);
   var upLabel=modelUploadCapabilityLabel(m);
-  o.textContent='['+m.params+'] '+m.name+' - '+(use||'general')+' | '+upLabel+(chatOk?'':' [NO CHAT]');
-  o.title='Best for: '+(use||'general')+'. '+m.desc+' Upload: '+upLabel+(chatOk?'':' (Not available for chat endpoint)');
+  var providerLabel=getModelProviderLabel(m);
+  o.textContent='['+m.params+'] '+m.name+' - '+(use||'general')+' | '+upLabel+' | '+providerLabel+(chatOk?'':' [NO CHAT]');
+  o.title='Best for: '+(use||'general')+'. '+m.desc+' Upload: '+upLabel+' '+providerLabel+(chatOk?'':' (Not available for chat endpoint)');
   o.disabled=!chatOk;
   modelGroups[groupLabel].appendChild(o);
 });
