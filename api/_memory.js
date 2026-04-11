@@ -14,6 +14,11 @@ function normalizeSpaces(text) {
   return String(text || '').replace(/\s+/g, ' ').trim();
 }
 
+function getMaxMemoryChunks() {
+  const n = Number(process.env.MEMORY_MAX_CHUNKS || 12);
+  return Number.isFinite(n) ? Math.max(1, Math.min(Math.floor(n), 32)) : 12;
+}
+
 function logRecoverable(scope, err) {
   const msg = err && err.message ? err.message : String(err || 'unknown error');
   console.warn(`[memory] ${scope}: ${msg}`);
@@ -75,7 +80,7 @@ export function splitIntoChunks(text, chunkSize = 500, overlap = 80) {
     i = Math.max(end - overlap, i + 1);
   }
 
-  return out.slice(0, 6);
+  return out.slice(0, getMaxMemoryChunks());
 }
 
 async function summarizeWithNvidia(conversationMessages) {

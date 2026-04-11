@@ -2,9 +2,6 @@
 // Routes chat requests to the right upstream provider by model id.
 const GITHUB_CHAT_MODEL_IDS = new Set([
   'xai/grok-3-mini',
-  'openai/gpt-5.4',
-  'openai/gpt-5.4-mini',
-  'openai/gpt-5.4-nano',
   'openai/gpt-5',
   'openai/gpt-4.1',
   'openai/gpt-4.1-mini',

@@ -1,4 +1,5 @@
-const CACHE_NAME = 'nimchat-v1';
+// Bump this on each deploy to avoid stale cached index/app shell.
+const CACHE_NAME = 'nimchat-v1.2';
 const APP_SHELL = [
   '/',
   '/index.html',

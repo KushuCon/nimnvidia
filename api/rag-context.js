@@ -196,6 +196,7 @@ export default async function handler(req, res) {
     const snippets = [];
     const variantQueries = await expandQueryVariants(query);
     const vectorMessageIds = new Set();
+    const pinnedIds = new Set();
 
     // 1) Vector retrieval from indexed chunks, with query expansion.
     for (const variant of variantQueries) {
@@ -283,6 +284,7 @@ export default async function handler(req, res) {
       const pinnedMessageIds = Array.from(
         new Set((pinnedRows || []).map((row) => String(row.message_id)).filter(Boolean))
       );
+      pinnedMessageIds.forEach((id) => pinnedIds.add(String(id)));
       if (pinnedMessageIds.length) {
         const pinnedMessageRows = await supabaseRest(
           `messages?select=id,conversation_id,role,content,model_id,created_at&id=in.(${pinnedMessageIds.join(',')})&conversation_id=in.${idList}`
@@ -332,19 +334,11 @@ export default async function handler(req, res) {
     }
 
     // Pin boost so pinned notes remain top-priority.
-    try {
-      const pins = await supabaseRest(
-        `pinned_messages?select=message_id&user_id=eq.${session.user_id}`
-      );
-      const pinnedIds = new Set((pins || []).map((pin) => String(pin.message_id)));
-      snippets.forEach((snippet) => {
-        if (snippet.message_id && pinnedIds.has(String(snippet.message_id))) {
-          snippet.score = Number(snippet.score || 0) + 10;
-        }
-      });
-    } catch (err) {
-      logRecoverable('pinBoost', err);
-    }
+    snippets.forEach((snippet) => {
+      if (snippet.message_id && pinnedIds.has(String(snippet.message_id))) {
+        snippet.score = Number(snippet.score || 0) + 10;
+      }
+    });
 
     const pinned = snippets.filter((snippet) => snippet.source === 'pinned').sort((a, b) => b.score - a.score);
     const fused = rrf(snippets.filter((snippet) => snippet.source !== 'pinned'));
