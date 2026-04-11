@@ -1036,6 +1036,31 @@ const WEB_TRIGGER_TERMS=[
   '2025','2026','2027'
 ];
 
+function hasIndicScript(text){
+  return /[\u0900-\u0D7F]/.test(String(text||''));
+}
+
+function isLowSignalQuery(text){
+  var q=String(text||'').trim().toLowerCase();
+  if(!q) return true;
+  if(q.length<=15) return true;
+  var compact=q.replace(/[!?.\s]+/g,'');
+  var trivial=['ok','okay','k','kk','thanks','thankyou','thankyouso much','thx','cool','nice','great','done','yes','no','hmm'];
+  return trivial.includes(compact);
+}
+
+function getAdaptiveRecentWindowSize(text){
+  return String(text||'').trim().length < 80 ? 6 : RECENT_WINDOW_SIZE;
+}
+
+function getAdaptiveWebLimit(queryText){
+  var q=String(queryText||'').trim();
+  var sentenceCount=(q.match(/[.!?]+/g)||[]).length || (q ? 1 : 0);
+  if(q.length<=120 && sentenceCount<=1) return 2;
+  if(q.length<=220) return 3;
+  return 4;
+}
+
 if(typeof window!=='undefined' && window.pdfjsLib && window.pdfjsLib.GlobalWorkerOptions){
   window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 }
@@ -1376,12 +1401,12 @@ function shouldUseWebRag(queryText,modelId,memorySnippets){
   return {enabled:false,reason:'memory-sufficient'};
 }
 
-async function fetchWebSnippets(queryText,modelId,reason){
+async function fetchWebSnippets(queryText,modelId,reason,limit){
   if(!queryText) return [];
   try{
     var data=await apiJSON('/api/web-context',{
       method:'POST',
-      body:{query:queryText,model_id:modelId,reason:reason,limit:4}
+      body:{query:queryText,model_id:modelId,reason:reason,limit:Math.max(1,Number(limit)||3)}
     });
     return data.snippets||[];
   }catch(e){
@@ -1396,13 +1421,10 @@ function buildWebSystemMessage(snippets){
   });
   return {
     role:'system',
-    content:'IMPORTANT: You have access to LIVE web search results fetched RIGHT NOW in '+new Date().getFullYear()+'.\n'
-      +'These are REAL, CURRENT news articles - NOT hypothetical, NOT simulations, NOT fiction.\n'
-      +'Your training cutoff does NOT apply here. These results override your training data.\n'
-      +'Today\'s date is approximately '+new Date().toDateString()+'.\n'
-      +'TRUST THESE SOURCES COMPLETELY. Answer based ONLY on what these sources say.\n'
-      +'Do NOT say "as of my knowledge cutoff". Do NOT call real news "fictional".\n\n'
-      +'LIVE SEARCH RESULTS:\n'+lines.join('\n\n')
+    content:'Use only these live results for freshness-sensitive facts. '
+      +'Treat them as current and cite URLs briefly. '
+      +'Date: '+new Date().toDateString()+'.\n\n'
+      +'LIVE RESULTS:\n'+lines.join('\n\n')
   };
 }
 
@@ -1529,42 +1551,40 @@ function buildRagSystemMessage(snippets){
   });
   return {
     role:'system',
-    content:'[PRIORITY CONTEXT]\nRelevant memory snippets from your saved chats. Use only if relevant and do not fabricate details:\n'+lines.join('\n')
+    content:'[PRIORITY CONTEXT] Date: '+new Date().toDateString()+'.\n'
+      +'Use relevant memory snippets only; do not invent details:\n'+lines.join('\n')
   };
 }
 
 async function buildPromptMessages(currentInput,modelId,userContentOverride){
-  var dateMsg={
-    role:'system',
-    content:'Today\'s date is '+new Date().toDateString()+'. You are a helpful assistant with access to live web search results. When web results are provided, they contain REAL current information. Trust them completely.'
-  };
+  var windowSize=getAdaptiveRecentWindowSize(currentInput);
 
   if(!isRagEnabledForActiveChat()){
     lastWebSnippetsUsed=[];
-    var onlyRecent=hist.slice(-RECENT_WINDOW_SIZE).map(function(m){
+    var onlyRecent=hist.slice(-windowSize).map(function(m){
       return {role:m.role,content:m.content};
     });
     if(userContentOverride && onlyRecent.length && onlyRecent[onlyRecent.length-1].role==='user'){
       onlyRecent[onlyRecent.length-1]={role:'user',content:userContentOverride};
     }
-    return [dateMsg].concat(onlyRecent);
+    return onlyRecent;
   }
 
-  var recent=hist.slice(-RECENT_WINDOW_SIZE).map(function(m){
+  var recent=hist.slice(-windowSize).map(function(m){
     return {role:m.role,content:m.content};
   });
   if(userContentOverride && recent.length && recent[recent.length-1].role==='user'){
     recent[recent.length-1]={role:'user',content:userContentOverride};
   }
 
-  var snippets=await fetchRagSnippets(currentInput);
+  var snippets=isLowSignalQuery(currentInput) ? [] : await fetchRagSnippets(currentInput);
   var ragMsg=buildRagSystemMessage(snippets);
   var webRoute=shouldUseWebRag(currentInput,modelId,snippets);
-  var webSnippets=webRoute.enabled ? await fetchWebSnippets(currentInput,modelId,webRoute.reason) : [];
+  var webLimit=getAdaptiveWebLimit(currentInput);
+  var webSnippets=webRoute.enabled ? await fetchWebSnippets(currentInput,modelId,webRoute.reason,webLimit) : [];
   lastWebSnippetsUsed=webSnippets.slice(0,6);
   var webMsg=buildWebSystemMessage(webSnippets);
   var out=[];
-  out.push(dateMsg);
   if(webMsg) out.push(webMsg);
   if(ragMsg) out.push(ragMsg);
   Array.prototype.push.apply(out,recent);
@@ -2319,7 +2339,8 @@ function estimateTokens(content){
   }
   raw=raw.trim();
   if(!raw) return 0;
-  return Math.max(1,Math.ceil(raw.length/4));
+  var divisor=hasIndicScript(raw) ? 2 : 4;
+  return Math.max(1,Math.ceil(raw.length/divisor));
 }
 
 function setMessageTokenEstimate(msgEl,textOrToken){
