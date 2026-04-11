@@ -4,9 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>NIM Chat</title>
+<meta name="theme-color" content="#080a08">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" type="image/png" href="/image.png">
 <link rel="shortcut icon" href="/image.png">
+<link rel="apple-touch-icon" href="/image.png">
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 <style>
 :root{
@@ -520,7 +527,7 @@ textarea#ti::placeholder{color:var(--textdd)}
 .sbtn:active{transform:scale(.96);background:#163300}
 .sbtn:disabled{opacity:.3;cursor:not-allowed}
 
-.tbar{display:flex;gap:5px;align-items:center}
+.tbar{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
 .tbtn{
   background:transparent;border:1px solid var(--border);color:var(--textd);
   font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:.5px;
@@ -529,6 +536,15 @@ textarea#ti::placeholder{color:var(--textdd)}
 .tbtn:active{border-color:var(--g2);color:var(--text)}
 .tbtn.del:active{border-color:var(--red);color:var(--red)}
 .cc{margin-left:auto;font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--textdd)}
+
+@media (max-width:480px){
+  .tbtn{padding:9px 11px;font-size:10px;}
+  .mem-pill{padding:9px 11px;min-height:40px;font-size:10px;}
+  .sbtn{height:48px;}
+  .prompt-actions{display:none;}
+  .tag,.msg-token,.mtag,.cc,.slbl,.sval{font-size:10px;}
+  .sysmsg{font-size:9px;}
+}
 
 /* TOAST */
 .toast{
@@ -689,14 +705,19 @@ textarea#ti::placeholder{color:var(--textdd)}
 <!-- INPUT -->
 <div class="inp-wrap">
   <div class="inp-row">
-    <textarea id="ti" placeholder="Message karo... (Enter=send, Shift+Enter=newline)"
-      onkeydown="hk(event)" oninput="oi(this)" rows="1"></textarea>
+    <textarea id="ti" placeholder="Message karo..."
+      onkeydown="hk(event)" oninput="oi(this)" rows="1"
+      enterkeyhint="send"
+      autocorrect="on"
+      autocapitalize="sentences"
+      spellcheck="true"></textarea>
     <button class="sbtn" id="sbtn" onclick="go()">▶ SEND</button>
   </div>
   <div class="tbar">
     <button class="tbtn" type="button" onclick="triggerImageUpload()">IMG</button>
     <button class="tbtn" type="button" onclick="triggerPdfUpload()">PDF+</button>
     <button class="tbtn" type="button" id="voiceBtn" onclick="toggleVoiceInput()">🎙 VOICE</button>
+    <button class="tbtn" type="button" onclick="regenerateLastAnswer()">⟳ REGEN</button>
     <button class="tbtn" type="button" onclick="xmd()">⬇ MD</button>
     <button class="tbtn" type="button" onclick="xjson()">⬇ JSON</button>
     <button class="tbtn" onclick="xpdf()">⬇ PDF</button>
@@ -978,7 +999,9 @@ function renderModelOptions(selectedValue){
     var upLabel=modelUploadCapabilityLabel(m);
     var provider=modelProviderLabel(m);
     var starred=favSet.has(m.id)?'★ ':'';
-    o.textContent=starred+'['+provider+'] ['+m.params+'] '+m.name+' - '+(use||'general')+' | '+upLabel+(chatOk?'':' [NO CHAT]');
+    o.textContent=IS_ANDROID
+      ? (starred+'['+m.params+'] '+m.name+(chatOk?'':' [NO CHAT]'))
+      : (starred+'['+provider+'] ['+m.params+'] '+m.name+' - '+(use||'general')+' | '+upLabel+(chatOk?'':' [NO CHAT]'));
     o.title='Provider: '+provider+'. Best for: '+(use||'general')+'. '+m.desc+' Upload: '+upLabel+(chatOk?'':' (Not available for chat endpoint)');
     o.disabled=!chatOk;
     msel.appendChild(o);
@@ -2364,6 +2387,7 @@ function addMsg(role,content,mn,meta){
   var inner=document.createElement('div');
   inner.className='msg-body';
   inner.innerHTML=fmt(content);
+  renderMathInNode(inner);
   bbl.appendChild(inner);
 
   var tokenRow=document.createElement('div');
@@ -2490,6 +2514,23 @@ function fmt(t){
   return t;
 }
 
+function renderMathInNode(el){
+  if(!el || typeof window==='undefined') return;
+  if(typeof window.renderMathInElement!=='function') return;
+  try{
+    window.renderMathInElement(el,{
+      delimiters:[
+        {left:'$$',right:'$$',display:true},
+        {left:'\\[',right:'\\]',display:true},
+        {left:'$',right:'$',display:false},
+        {left:'\\(',right:'\\)',display:false}
+      ],
+      throwOnError:false,
+      strict:'ignore'
+    });
+  }catch(e){}
+}
+
 function addTyp(){
   hwlc();
   var c=document.getElementById('msgs');
@@ -2563,6 +2604,7 @@ function addCompareBlock(results, promptText){
     var text=document.createElement('div');
     text.className='cmp-text';
     text.innerHTML=fmt(result.reply || result.error || '(empty)');
+    renderMathInNode(text);
     card.appendChild(model);
     card.appendChild(text);
     grid.appendChild(card);
@@ -2752,10 +2794,34 @@ function updateStreamBubble(msgEl,text,opts){
   var node=getMessageContentNode(msgEl);
   if(!node) return;
   node.innerHTML=fmt(text||'');
+  renderMathInNode(node);
   if(!(opts && opts.skipTokenEstimate)){
     setMessageTokenEstimate(msgEl,text||'');
   }
   sc();
+}
+
+function regenerateLastAnswer(){
+  if(isStreaming){toast('Wait for current generation to finish');return;}
+  if(!authUser){toast('Login required');return;}
+  if(!hist.length){toast('Nothing to regenerate');return;}
+
+  var lastUserIdx=-1;
+  for(var i=hist.length-1;i>=0;i--){
+    if(hist[i] && hist[i].role==='user'){
+      lastUserIdx=i;
+      break;
+    }
+  }
+  if(lastUserIdx<0){toast('No user prompt found');return;}
+  var prompt=String(hist[lastUserIdx].content||'').trim();
+  if(!prompt){toast('Last prompt is empty');return;}
+
+  hist=hist.slice(0,lastUserIdx);
+  activeMessagesCache=activeMessagesCache.slice(0,lastUserIdx);
+  rebuildMessagesFromHistory();
+  setP(prompt);
+  go();
 }
 
 function extractVisibleAssistantText(raw){
@@ -3253,6 +3319,27 @@ function closeShortcutHelp(){
   var m=document.getElementById('kbdModal');
   if(m) m.classList.remove('open');
 }
+
+function registerServiceWorker(){
+  if(typeof window==='undefined' || !('serviceWorker' in navigator)) return;
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('/sw.js').catch(function(err){
+      console.warn('SW register failed:', err && err.message ? err.message : err);
+    });
+  });
+}
+
+function bindAndroidViewportInputGuard(){
+  if(typeof window==='undefined' || !('visualViewport' in window)) return;
+  window.visualViewport.addEventListener('resize',function(){
+    var inp=document.getElementById('ti');
+    if(document.activeElement===inp){
+      setTimeout(function(){
+        inp.scrollIntoView({block:'nearest'});
+      },80);
+    }
+  });
+}
 function toast(msg,actionLabel,actionFn,duration){
   var t=document.getElementById('toast');
   if(!t) return;
@@ -3338,6 +3425,8 @@ loadPromptTemplates();
 refreshModelMetaUI();
 loadTheme();
 updateVoiceButton();
+registerServiceWorker();
+bindAndroidViewportInputGuard();
 initAuth();
 </script>
 </body>

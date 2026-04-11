@@ -1,6 +1,11 @@
 import { requireSession, supabaseRest, supabaseRpc } from './_supabase.js';
 import { fetchEmbedding, toVectorLiteral } from './_memory.js';
 
+function logRecoverable(scope, err) {
+  const msg = err && err.message ? err.message : String(err || 'unknown error');
+  console.warn(`[rag-context] ${scope}: ${msg}`);
+}
+
 function preview(text, max = 260) {
   const s = String(text || '').replace(/\s+/g, ' ').trim();
   return s.length <= max ? s : s.slice(0, max) + '...';
@@ -106,7 +111,8 @@ async function expandQueryVariants(query) {
     let data = null;
     try {
       data = raw ? JSON.parse(raw) : null;
-    } catch {
+    } catch (err) {
+      logRecoverable('expandQueryVariants.parse', err);
       data = null;
     }
 
@@ -129,7 +135,8 @@ async function expandQueryVariants(query) {
       unique.push(clean);
     });
     return unique.slice(0, 4);
-  } catch {
+  } catch (err) {
+    logRecoverable('expandQueryVariants', err);
     return [query];
   }
 }
@@ -147,7 +154,8 @@ async function fetchFeedbackMap(session, messageIds, conversationIds) {
         `&message_id=in.${idList}`
     );
     return Object.fromEntries((rows || []).map((row) => [String(row.message_id), row.feedback]));
-  } catch {
+  } catch (err) {
+    logRecoverable('fetchFeedbackMap', err);
     return {};
   }
 }
@@ -183,16 +191,6 @@ export default async function handler(req, res) {
       ids = conversations.slice(0, 50).map((c) => c.id);
     }
 
-    try {
-      const blockedRows = await supabaseRest(
-        `rag_blacklist?select=conversation_id&user_id=eq.${session.user_id}`
-      );
-      const blocked = new Set((blockedRows || []).map((row) => row.conversation_id));
-      ids = ids.filter((id) => !blocked.has(id));
-    } catch {
-      // Blacklist may not be migrated yet.
-    }
-
     if (!ids.length) return res.status(200).json({ snippets: [] });
 
     const snippets = [];
@@ -224,8 +222,8 @@ export default async function handler(req, res) {
             score: Math.round((1 - Number(row.similarity || 0)) * 100) / 100,
           });
         });
-      } catch {
-        // If vector stack is unavailable, fallback layers below still work.
+      } catch (err) {
+        logRecoverable('vectorRetrieval', err);
       }
     }
 
@@ -247,8 +245,8 @@ export default async function handler(req, res) {
           score: Math.max(0.4, 1.2 - idx * 0.08),
         });
       });
-    } catch {
-      // Summary table may not exist yet before migration.
+    } catch (err) {
+      logRecoverable('summaryRetrieval', err);
     }
 
     // 3) Lexical fallback for robustness.
@@ -303,8 +301,8 @@ export default async function handler(req, res) {
           });
         });
       }
-    } catch {
-      // Pinned content is best-effort.
+    } catch (err) {
+      logRecoverable('pinnedMessages', err);
     }
 
     const allMessageIds = Array.from(
@@ -329,8 +327,8 @@ export default async function handler(req, res) {
           snippet.score = Number(snippet.score || 0) - 2;
         }
       });
-    } catch {
-      // Non-fatal, keep retrieval flow running.
+    } catch (err) {
+      logRecoverable('conversationDownvotePenalty', err);
     }
 
     // Pin boost so pinned notes remain top-priority.
@@ -344,8 +342,8 @@ export default async function handler(req, res) {
           snippet.score = Number(snippet.score || 0) + 10;
         }
       });
-    } catch {
-      // Non-fatal, keep retrieval flow running.
+    } catch (err) {
+      logRecoverable('pinBoost', err);
     }
 
     const pinned = snippets.filter((snippet) => snippet.source === 'pinned').sort((a, b) => b.score - a.score);

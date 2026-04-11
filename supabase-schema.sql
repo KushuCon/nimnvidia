@@ -158,18 +158,6 @@ create index if not exists message_feedback_user_idx on message_feedback(user_id
 create index if not exists message_feedback_conversation_idx on message_feedback(conversation_id);
 create index if not exists message_feedback_message_idx on message_feedback(message_id);
 
-create table if not exists rag_blacklist (
-  id bigserial primary key,
-  user_id uuid references users(id) on delete cascade,
-  conversation_id uuid references conversations(id) on delete cascade,
-  reason text,
-  created_at timestamptz default now(),
-  unique (user_id, conversation_id)
-);
-
-create index if not exists rag_blacklist_user_idx on rag_blacklist(user_id);
-create index if not exists rag_blacklist_conversation_idx on rag_blacklist(conversation_id);
-
 create table if not exists memory_summaries (
   id bigint generated always as identity primary key,
   user_id uuid not null references users(id) on delete cascade,

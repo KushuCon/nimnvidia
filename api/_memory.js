@@ -14,6 +14,11 @@ function normalizeSpaces(text) {
   return String(text || '').replace(/\s+/g, ' ').trim();
 }
 
+function logRecoverable(scope, err) {
+  const msg = err && err.message ? err.message : String(err || 'unknown error');
+  console.warn(`[memory] ${scope}: ${msg}`);
+}
+
 export function toVectorLiteral(embedding) {
   return `[${embedding.join(',')}]`;
 }
@@ -39,7 +44,8 @@ export async function fetchEmbedding(text) {
   let data = null;
   try {
     data = raw ? JSON.parse(raw) : null;
-  } catch {
+  } catch (err) {
+    logRecoverable('fetchEmbedding.parse', err);
     data = null;
   }
 
@@ -110,7 +116,8 @@ async function summarizeWithNvidia(conversationMessages) {
   let data = null;
   try {
     data = raw ? JSON.parse(raw) : null;
-  } catch {
+  } catch (err) {
+    logRecoverable('summarizeWithNvidia.parse', err);
     data = null;
   }
 
@@ -144,8 +151,8 @@ export async function indexMessageForMemory({ userId, conversationId, messageId,
         chunk_text: chunkText,
         embedding: toVectorLiteral(emb),
       });
-    } catch {
-      // Skip indexing failures without blocking the chat flow.
+    } catch (err) {
+      logRecoverable('indexMessageForMemory.chunk', err);
     }
   }
 
@@ -182,7 +189,8 @@ export async function maybeCreateSummarySnapshot({ userId, conversationId }) {
   let summaryText = null;
   try {
     summaryText = await summarizeWithNvidia(chron);
-  } catch {
+  } catch (err) {
+    logRecoverable('maybeCreateSummarySnapshot.summarize', err);
     return;
   }
   if (!summaryText) return;
@@ -190,7 +198,8 @@ export async function maybeCreateSummarySnapshot({ userId, conversationId }) {
   let summaryEmb = null;
   try {
     summaryEmb = await fetchEmbedding(summaryText);
-  } catch {
+  } catch (err) {
+    logRecoverable('maybeCreateSummarySnapshot.embed', err);
     summaryEmb = null;
   }
 
