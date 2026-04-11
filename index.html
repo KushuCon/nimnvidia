@@ -310,6 +310,23 @@ select#msel option{background:#0a120a;color:var(--text)}
 }
 .src-btn.on{border-color:var(--g);color:var(--g);background:var(--glow2)}
 .tbtn.on{border-color:var(--g);color:var(--g);background:var(--glow2)}
+.think-block{
+  margin:6px 0;border:1px solid var(--border);border-radius:var(--r);
+  background:#050905;overflow:hidden;
+}
+.think-block summary{
+  cursor:pointer;padding:5px 9px;
+  font-family:'Share Tech Mono',monospace;font-size:9px;
+  color:var(--textd);letter-spacing:.5px;list-style:none;
+  user-select:none;
+}
+.think-block summary::-webkit-details-marker{display:none}
+.think-block[open] summary{color:var(--g);border-bottom:1px solid var(--border)}
+.think-block .think-body{
+  padding:8px 10px;font-family:'Share Tech Mono',monospace;
+  font-size:10px;color:var(--textd);line-height:1.6;
+  white-space:pre-wrap;word-break:break-word;max-height:300px;overflow-y:auto;
+}
 
 .tag{
   border-radius:2px;padding:2px 5px;font-size:9px;letter-spacing:.3px;flex-shrink:0;
@@ -528,6 +545,18 @@ textarea#ti::placeholder{color:var(--textdd)}
 .modal-title{font-family:'Orbitron',sans-serif;color:var(--g);font-size:12px;letter-spacing:1.4px;margin-bottom:8px}
 .modal-list{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text);line-height:1.9}
 .modal-foot{display:flex;justify-content:flex-end;margin-top:10px}
+.kbd-modal{
+  display:none;position:fixed;inset:0;z-index:9500;
+  background:rgba(0,0,0,.6);align-items:center;justify-content:center;
+}
+.kbd-modal.open{display:flex}
+.kbd-box{
+  background:var(--bg2);border:1px solid var(--border2);border-radius:8px;
+  padding:20px;width:min(90vw,360px);display:flex;flex-direction:column;gap:10px;
+}
+.kbd-title{font-family:'Orbitron',sans-serif;font-size:12px;color:var(--g);letter-spacing:2px}
+.kbd-row{display:flex;justify-content:space-between;align-items:center;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text)}
+.kbd-key{background:var(--bg4);border:1px solid var(--border2);border-radius:3px;padding:2px 6px;font-size:9px;color:var(--g)}
 </style>
 </head>
 <body class="auth-locked">
@@ -671,6 +700,7 @@ textarea#ti::placeholder{color:var(--textdd)}
     <button class="tbtn" type="button" onclick="xmd()">⬇ MD</button>
     <button class="tbtn" type="button" onclick="xjson()">⬇ JSON</button>
     <button class="tbtn" onclick="xpdf()">⬇ PDF</button>
+    <button class="tbtn" type="button" onclick="document.getElementById('kbdModal').classList.toggle('open')">?</button>
     <button class="tbtn" type="button" id="stopBtn" style="display:none" onclick="stopStreaming()">■ STOP</button>
     <button class="tbtn" type="button" id="scrollLockBtn" onclick="toggleAutoScroll()">SCROLL ON</button>
     <button class="tbtn del" onclick="clr()">✕ CLEAR</button>
@@ -683,17 +713,17 @@ textarea#ti::placeholder{color:var(--textdd)}
 
 <div class="toast" id="toast"></div>
 
-<div class="modal" id="shortcutModal" onclick="closeShortcutHelp(event)">
-  <div class="modal-card" onclick="event.stopPropagation()">
-    <div class="modal-title">Keyboard Shortcuts</div>
-    <div class="modal-list">
-      Ctrl+/ : New chat<br>
-      Ctrl+K : Focus model selector<br>
-      Ctrl+Shift+C : Copy last assistant message<br>
-      Ctrl+B : Toggle chat drawer<br>
-      Ctrl+? : Open this shortcuts panel
-    </div>
-    <div class="modal-foot"><button type="button" class="mini-btn" onclick="closeShortcutHelp()">Close</button></div>
+<div class="kbd-modal" id="kbdModal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="kbd-box">
+    <div class="kbd-title">KEYBOARD SHORTCUTS</div>
+    <div class="kbd-row"><span>New chat</span><span class="kbd-key">Ctrl + /</span></div>
+    <div class="kbd-row"><span>Focus model selector</span><span class="kbd-key">Ctrl + K</span></div>
+    <div class="kbd-row"><span>Copy last AI reply</span><span class="kbd-key">Ctrl + Shift + C</span></div>
+    <div class="kbd-row"><span>Toggle chat drawer</span><span class="kbd-key">Ctrl + B</span></div>
+    <div class="kbd-row"><span>Send message</span><span class="kbd-key">Enter</span></div>
+    <div class="kbd-row"><span>New line</span><span class="kbd-key">Shift + Enter</span></div>
+    <div class="kbd-row"><span>Close this</span><span class="kbd-key">Esc</span></div>
+    <button class="tbtn" style="margin-top:4px" onclick="document.getElementById('kbdModal').classList.remove('open')">CLOSE</button>
   </div>
 </div>
 
@@ -2444,6 +2474,12 @@ function rebuildMessagesFromHistory(){
 
 function fmt(t){
   t=t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  t=t.replace(/&lt;think&gt;([\s\S]*?)&lt;\/think&gt;/gi,function(_,inner){
+    var cleaned=String(inner||'').trim();
+    if(!cleaned) return '';
+    return '<details class="think-block"><summary>▸ Reasoning</summary><div class="think-body">'+cleaned+'</div></details>';
+  });
+  t=t.replace(/&lt;think&gt;[\s\S]*/i,'');
   t=t.replace(/```([\s\S]*?)```/g,'<pre><code>$1</code></pre>');
   t=t.replace(/`([^`]+)`/g,'<code>$1</code>');
   t=t.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
@@ -2700,7 +2736,8 @@ function estimateTokens(content){
   }
   raw=raw.trim();
   if(!raw) return 0;
-  var divisor=hasIndicScript(raw) ? 2 : 4;
+  var nonLatinRatio=(raw.match(/[^\x00-\x7F]/g)||[]).length / raw.length;
+  var divisor=nonLatinRatio>0.3 ? 2 : 4;
   return Math.max(1,Math.ceil(raw.length/divisor));
 }
 
@@ -2722,17 +2759,11 @@ function updateStreamBubble(msgEl,text,opts){
 }
 
 function extractVisibleAssistantText(raw){
-  var s=String(raw||'');
-  s=s.replace(/<think>[\s\S]*?<\/think>/gi,'');
-  var dangling=s.search(/<think>/i);
-  if(dangling!==-1) s=s.slice(0,dangling);
-  return s;
+  return String(raw||'');
 }
 
 function sanitizeAssistantOutput(text){
   var s=String(text||'');
-  s=s.replace(/<think>[\s\S]*?<\/think>/gi,' ');
-  s=s.replace(/<\/?think>/gi,' ');
   s=s.replace(/\n{3,}/g,'\n\n');
   return s.trim();
 }
@@ -3214,12 +3245,12 @@ function sc(){
 }
 
 function openShortcutHelp(){
-  var m=document.getElementById('shortcutModal');
+  var m=document.getElementById('kbdModal');
   if(m) m.classList.add('open');
 }
 
 function closeShortcutHelp(){
-  var m=document.getElementById('shortcutModal');
+  var m=document.getElementById('kbdModal');
   if(m) m.classList.remove('open');
 }
 function toast(msg,actionLabel,actionFn,duration){
@@ -3268,6 +3299,10 @@ document.addEventListener('touchend',function(e){
 },{passive:true});
 
 document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){
+    var k=document.getElementById('kbdModal');
+    if(k) k.classList.remove('open');
+  }
   if(!authUser) return;
   if(e.ctrlKey && e.key==='/'){
     e.preventDefault();
