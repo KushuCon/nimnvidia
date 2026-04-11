@@ -750,6 +750,11 @@ textarea#ti::placeholder{color:var(--textdd)}
 
 <script>
 // ══════════════════════════════════════════
+// GLOBAL FLAGS — declared first to avoid TDZ
+// ══════════════════════════════════════════
+const IS_ANDROID=typeof navigator!=='undefined' && /Android/i.test(navigator.userAgent||'');
+
+// ══════════════════════════════════════════
 // MODELS — sorted ascending by param size
 // ══════════════════════════════════════════
 const MODELS=[
@@ -888,6 +893,9 @@ const MODELS=[
 ];
 
 const EXTRA_GITHUB_MODELS=[
+  {id:"openai/gpt-5.4",name:"GPT-5.4",params:"flagship",pv:500,desc:"OpenAI GPT-5.4 via GitHub Models.",tags:["reasoning","coding","math"]},
+  {id:"openai/gpt-5.4-mini",name:"GPT-5.4 Mini",params:"mini",pv:120,desc:"OpenAI GPT-5.4 Mini via GitHub Models.",tags:["reasoning","coding"]},
+  {id:"openai/gpt-5.4-nano",name:"GPT-5.4 Nano",params:"nano",pv:20,desc:"OpenAI GPT-5.4 Nano via GitHub Models.",tags:["reasoning"]},
   {id:"openai/gpt-5",name:"GPT-5 (Legacy)",params:"legacy",pv:490,desc:"OpenAI GPT-5 legacy id via GitHub Models.",tags:["reasoning","coding","math"]},
   {id:"openai/gpt-4.1",name:"GPT-4.1",params:"4.1",pv:200,desc:"OpenAI GPT-4.1 via GitHub Models.",tags:["reasoning","coding"]},
   {id:"openai/gpt-4.1-mini",name:"GPT-4.1 Mini",params:"4.1 mini",pv:45,desc:"OpenAI GPT-4.1 Mini via GitHub Models.",tags:["reasoning"]},
@@ -1084,7 +1092,7 @@ let authUser=null;
 let activeConversationId=null;
 let convList=[];
 let activeMessagesCache=[];
-const IS_ANDROID=typeof navigator!=='undefined' && /Android/i.test(navigator.userAgent||'');
+// IS_ANDROID moved to top of script to fix temporal dead zone (TDZ) error
 const BOOT_CACHE_KEY='nimBootV1';
 const GLOBAL_STATS_CACHE_KEY='nimGlobalStatsV1';
 const CHAT_RAG_TOGGLES_KEY='nimChatRagTogglesV1';
@@ -2259,6 +2267,17 @@ async function authLogout(){
 async function initAuth(){
   const started=Date.now();
   showBootSkel();
+
+  // Safety net: force-hide skeleton after 5s no matter what (handles offline/no-backend case)
+  var safetyTimer=setTimeout(function(){
+    hideBootSkel();
+    if(!authUser){
+      setAuthUI();
+      setAuthNote('Backend not reachable. Deploy on Vercel or run via `vercel dev`.',true);
+      resetChatUI();
+    }
+  },5000);
+
   var cachedStats=loadGlobalStatsCache();
   if(cachedStats) applyGlobalStats(cachedStats);
   rnStats();
@@ -2276,10 +2295,11 @@ async function initAuth(){
   }catch(e){
     if(!cached || !cached.user){
       setAuthUI();
-      setAuthNote('Auth init failed. Check backend env.',true);
+      setAuthNote('Backend nahi mila. Vercel pe deploy karo ya `vercel dev` se chalao.',true);
       resetChatUI();
     }
   }finally{
+    clearTimeout(safetyTimer);
     const wait=Math.max(0,BOOT_MIN_DELAY-(Date.now()-started));
     setTimeout(hideBootSkel,wait);
   }
