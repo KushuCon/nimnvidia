@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>NIM Chat</title>
 <meta name="theme-color" content="#080a08">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" type="image/png" href="/image.png">
@@ -750,9 +751,38 @@ textarea#ti::placeholder{color:var(--textdd)}
 
 <script>
 // ══════════════════════════════════════════
-// GLOBAL FLAGS — declared first to avoid TDZ
-// ══════════════════════════════════════════
+// IS_ANDROID declared first to avoid TDZ
 const IS_ANDROID=typeof navigator!=='undefined' && /Android/i.test(navigator.userAgent||'');
+
+// ── CORE GLOBALS — declared at very top to prevent TDZ errors ──
+let hist=[],msgN=0;
+let authUser=null;
+let activeConversationId=null;
+let convList=[];
+let activeMessagesCache=[];
+let ragScope='current';
+let globalStats={total:0,tavily:0,models:{}};
+let chatRagToggles={};
+let newChatRagEnabled=true;
+let compareMode=false;
+let pendingImageAttachment=null;
+let pendingPdfAttachment=null;
+let lastWebSnippetsUsed=[];
+let pendingDeletedConversation=null;
+let pendingDeleteUndoTimer=null;
+let toastHideTimer=null;
+let drawerSearchQuery='';
+let systemPrompt='';
+let promptTemplates=[];
+let isStreaming=false;
+let activeStreamController=null;
+let autoScrollEnabled=true;
+let currentTheme='dark';
+let speechRecognition=null;
+let speechListening=false;
+let speechBaseInput='';
+let speechFinalBuffer='';
+let favoriteModelIds=[];
 
 // ══════════════════════════════════════════
 // MODELS — sorted ascending by param size
@@ -973,7 +1003,7 @@ function modelProviderLabel(m){
   return 'NVIDIA';
 }
 
-let favoriteModelIds=[];
+// favoriteModelIds declared at top globals
 
 function loadFavoriteModels(){
   try{favoriteModelIds=JSON.parse(localStorage.getItem('nimModelFavoritesV1')||'[]')||[];}catch(e){favoriteModelIds=[];}
@@ -1088,11 +1118,7 @@ function onMC(){
 onMC();
 
 const MODEL_BY_ID=Object.fromEntries(MODELS.map(m=>[m.id,m]));
-let authUser=null;
-let activeConversationId=null;
-let convList=[];
-let activeMessagesCache=[];
-// IS_ANDROID moved to top of script to fix temporal dead zone (TDZ) error
+// All let globals declared at top of script — no duplicates here
 const BOOT_CACHE_KEY='nimBootV1';
 const GLOBAL_STATS_CACHE_KEY='nimGlobalStatsV1';
 const CHAT_RAG_TOGGLES_KEY='nimChatRagTogglesV1';
@@ -1102,28 +1128,6 @@ const RECENT_WINDOW_SIZE=18;
 const SYS_PROMPT_KEY='nimSystemPromptV1';
 const PROMPT_TEMPLATES_KEY='nimPromptTemplatesV1';
 const THEME_KEY='nimThemeV1';
-let ragScope='current';
-let globalStats={total:0,tavily:0,models:{}};
-let chatRagToggles={};
-let newChatRagEnabled=true;
-let compareMode=false;
-let pendingImageAttachment=null;
-let pendingPdfAttachment=null;
-let lastWebSnippetsUsed=[];
-let pendingDeletedConversation=null;
-let pendingDeleteUndoTimer=null;
-let toastHideTimer=null;
-let drawerSearchQuery='';
-let systemPrompt='';
-let promptTemplates=[];
-let isStreaming=false;
-let activeStreamController=null;
-let autoScrollEnabled=true;
-let currentTheme='dark';
-let speechRecognition=null;
-let speechListening=false;
-let speechBaseInput='';
-let speechFinalBuffer='';
 const SpeechRecognitionCtor=(typeof window!=='undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition)) || null;
 
 const MODEL_CUTOFFS={
@@ -2376,7 +2380,7 @@ rnStats();
 })();
 
 // ── HISTORY ──
-let hist=[],msgN=0;
+// hist/msgN moved to top-level globals to fix TDZ
 
 function hwlc(){var w=document.getElementById('wlc');if(w)w.remove();}
 
