@@ -413,6 +413,8 @@ select#msel option{background:#0a120a;color:var(--text)}
 .bbl code{font-family:'Share Tech Mono',monospace;font-size:11px;background:#0e180a;padding:1px 4px;border-radius:2px;color:var(--g)}
 .bbl strong{color:var(--white)}
 .bbl p{margin:2px 0}
+.bbl a{color:#9fda4f;text-decoration:underline;text-underline-offset:2px;word-break:break-all}
+.bbl a:hover{color:#c5ef7d}
 
 .sysmsg{
   align-self:center;font-family:'Share Tech Mono',monospace;font-size:8px;
@@ -2103,6 +2105,8 @@ function fmt(t){
   t=t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   t=t.replace(/```([\s\S]*?)```/g,'<pre><code>$1</code></pre>');
   t=t.replace(/`([^`]+)`/g,'<code>$1</code>');
+  t=t.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  t=t.replace(/(^|\s)(https?:\/\/[^\s<]+)/g,'$1<a href="$2" target="_blank" rel="noopener noreferrer">$2</a>');
   t=t.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
   t=t.replace(/\*(.*?)\*/g,'<em>$1</em>');
   t=t.replace(/\n/g,'<br>');
@@ -2569,7 +2573,6 @@ async function go(){
         }
       } else {
         var streamEl=addMsg('ass','',m.name,{webUsed:lastWebSnippetsUsed.length>0,messageId:null,tokenEstimate:0});
-        updateStreamBubble(streamEl,'AI is thinking, rukjao...',{skipTokenEstimate:true});
         setMessageTokenEstimate(streamEl,0);
         var ctype=String(res.headers.get('content-type')||'').toLowerCase();
         var reply='';
