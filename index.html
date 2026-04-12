@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>NIM Chat</title>
 <meta name="theme-color" content="#080a08">
 <meta name="mobile-web-app-capable" content="yes">
@@ -349,6 +349,10 @@ select#msel option{background:#0a120a;color:var(--text)}
   .stats{order:4;margin-left:0;flex:1 1 100%;justify-content:space-between;padding:5px 8px}
   .stats .slbl,.stats .sdiv{font-size:8px}
   .stats .sval{font-size:8px}
+  /* Fix B: shrink ctrl bar vertical space on mobile */
+  .ctrl{padding:5px 10px;gap:4px}
+  .mem-row{gap:5px}
+  .ctx-pill{padding:5px 7px}
 }
 
 /* MESSAGES */
@@ -363,7 +367,7 @@ select#msel option{background:#0a120a;color:var(--text)}
 
 .wlc{
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  flex:1;gap:10px;padding:20px;text-align:center;min-height:260px;
+  flex:1;gap:10px;padding:20px;text-align:center;min-height:min(260px,40vh);
 }
 .wnum{
   font-family:'Orbitron',monospace;font-size:52px;font-weight:900;color:var(--g);
@@ -451,12 +455,14 @@ select#msel option{background:#0a120a;color:var(--text)}
 .inp-wrap{
   background:var(--bg2);border-top:1px solid var(--border2);
   padding:9px 12px;flex-shrink:0;display:flex;flex-direction:column;gap:6px;
+  /* Fix E: prevent inp-wrap from hiding behind Android gesture nav bar */
+  padding-bottom:calc(9px + env(safe-area-inset-bottom, 0px));
 }
 .inp-row{display:flex;gap:6px;align-items:flex-end}
 textarea#ti{
   flex:1;background:var(--bg3);color:var(--white);
   border:1px solid var(--border);border-radius:var(--r);
-  padding:9px 11px;font-family:'Exo 2',sans-serif;font-size:15px;
+  padding:9px 11px;font-family:'Exo 2',sans-serif;font-size:16px;/* Fix E: ≥16px stops Android/iOS auto-zoom on focus */
   resize:none;outline:none;min-height:42px;max-height:110px;
   line-height:1.5;transition:border-color .2s;appearance:none;-webkit-appearance:none;
 }
@@ -483,11 +489,17 @@ textarea#ti::placeholder{color:var(--textdd)}
 .tbtn.del:active{border-color:var(--red);color:var(--red)}
 .cc{margin-left:auto;font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--textdd)}
 
+@media (max-width:620px){
+  /* Fix D: tbar scrolls horizontally instead of wrapping onto 2 rows */
+  .tbar{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px}
+  .tbar::-webkit-scrollbar{display:none}
+  .cc{flex-shrink:0}
+}
+
 @media (max-width:480px){
   .tbtn{padding:9px 11px;font-size:10px;}
   .mem-pill{padding:9px 11px;min-height:40px;font-size:10px;}
   .sbtn{height:48px;}
-  .prompt-actions{display:none;}
   .tag,.msg-token,.mtag,.cc,.slbl,.sval{font-size:10px;}
   .sysmsg{font-size:9px;}
 }
