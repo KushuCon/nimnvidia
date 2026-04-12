@@ -224,9 +224,8 @@ body.loading::after{z-index:9988}
   font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--textd);
   letter-spacing:1.5px;text-transform:uppercase;white-space:nowrap;flex-shrink:0;width:32px;
 }
-.crow.wrap{flex-wrap:wrap;align-items:stretch}
-.ctx-pill{background:#0b1508;border:1px solid var(--border2);color:var(--textd);border-radius:var(--r);padding:7px 9px;font-family:'Share Tech Mono',monospace;font-size:9px;white-space:nowrap}
-.token-budget{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--textd)}
+.crow.wrap{flex-wrap:wrap;align-items:center}
+.token-budget{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--textd);display:flex;align-items:center;min-height:34px;line-height:1}
 .token-budget.warn{color:var(--amber)}
 .token-budget.crit{color:var(--red)}
 .mini-btn{background:transparent;border:1px solid var(--border2);color:var(--textd);font-family:'Share Tech Mono',monospace;font-size:8px;padding:4px 8px;border-radius:var(--r);cursor:pointer}
@@ -352,7 +351,6 @@ select#msel option{background:#0a120a;color:var(--text)}
   /* Fix B: shrink ctrl bar vertical space on mobile */
   .ctrl{padding:5px 10px;gap:4px}
   .mem-row{gap:5px}
-  .ctx-pill{padding:5px 7px}
 }
 
 /* MESSAGES */
@@ -587,7 +585,6 @@ textarea#ti::placeholder{color:var(--textdd)}
   <div class="crow wrap">
     <span class="lbl">MODEL</span>
     <select id="msel" onchange="onMC()"></select>
-    <div id="modelCtx" class="ctx-pill">CTX: --</div>
     <div class="token-budget" id="tokenBudgetWarn">Budget: --</div>
     <button type="button" id="memScopeBtn" class="mem-pill" onclick="toggleMemoryScope()">Memory: <strong>Current Chat</strong></button>
     <button type="button" id="ragChatBtn" class="mem-pill" onclick="toggleChatRag()">RAG: <strong>ON</strong></button>
@@ -978,9 +975,6 @@ function prettyCtx(n){
 }
 
 function refreshModelMetaUI(){
-  var m=getSelectedModel();
-  var ctxEl=document.getElementById('modelCtx');
-  if(ctxEl) ctxEl.textContent='CTX: '+prettyCtx(getModelContextWindow(m));
   updateTokenBudgetWarning();
 }
 
