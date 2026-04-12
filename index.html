@@ -33,7 +33,6 @@ body{
   display:flex;flex-direction:column;
   min-height:100vh;
   min-height:100dvh;
-  min-height:var(--vvh,100dvh);
   overflow-y:auto;
 }
 body.light{
@@ -142,18 +141,15 @@ body.loading::after{z-index:9988}
 .drawer-actions{display:flex;gap:8px;align-items:center}
 .drawer-close{
   background:transparent;border:1px solid var(--border);color:var(--textd);
-  font-family:'Share Tech Mono',monospace;font-size:11px;padding:12px 14px;border-radius:var(--r);cursor:pointer;
-  min-height:48px;min-width:48px;
+  font-family:'Share Tech Mono',monospace;font-size:9px;padding:6px 8px;border-radius:var(--r);cursor:pointer;
 }
 .drawer-new{
   background:#0d1a08;border:1px solid var(--g2);color:var(--g);
-  font-family:'Share Tech Mono',monospace;font-size:11px;padding:12px 14px;border-radius:var(--r);cursor:pointer;
-  min-height:48px;
+  font-family:'Share Tech Mono',monospace;font-size:9px;padding:6px 8px;border-radius:var(--r);cursor:pointer;
 }
 .drawer-logout{
   background:transparent;border:1px solid #5a1a1a;color:#cc6666;
-  font-family:'Share Tech Mono',monospace;font-size:11px;padding:12px 14px;border-radius:var(--r);cursor:pointer;
-  min-height:48px;
+  font-family:'Share Tech Mono',monospace;font-size:9px;padding:6px 8px;border-radius:var(--r);cursor:pointer;
 }
 .drawer-list{display:flex;flex-direction:column;gap:8px;overflow-y:auto;flex:1;padding-right:2px}
 .drawer-search{
@@ -172,14 +168,12 @@ body.loading::after{z-index:9988}
 .drawer-item-actions{display:flex;gap:6px;align-items:center;margin-left:auto;flex-shrink:0}
 .drawer-edit{
   background:transparent;border:1px solid var(--border);color:var(--textd);
-  border-radius:2px;font-family:'Share Tech Mono',monospace;font-size:11px;padding:12px;cursor:pointer;
-  min-height:48px;min-width:48px;
+  border-radius:2px;font-family:'Share Tech Mono',monospace;font-size:8px;padding:3px 6px;cursor:pointer;
 }
 .drawer-edit:active{border-color:var(--g2);color:var(--g)}
 .drawer-del{
   background:transparent;border:1px solid #5a1a1a;color:#cc6666;
-  border-radius:2px;font-family:'Share Tech Mono',monospace;font-size:11px;padding:12px;cursor:pointer;
-  min-height:48px;min-width:48px;
+  border-radius:2px;font-family:'Share Tech Mono',monospace;font-size:8px;padding:3px 6px;cursor:pointer;
 }
 .drawer-del:active{border-color:var(--red);color:var(--red)}
 .drawer-empty{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--textdd);line-height:1.7;padding:8px 0}
@@ -196,7 +190,7 @@ body.loading::after{z-index:9988}
   content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
   background:linear-gradient(90deg,transparent,var(--g),transparent);opacity:.4;
 }
-.logo{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.logo{display:flex;align-items:center;gap:7px;flex-shrink:0;text-decoration:none;cursor:pointer}
 .logo-hex{
   width:30px;height:30px;background:var(--g);
   clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%);
@@ -569,12 +563,12 @@ textarea#ti::placeholder{color:var(--textdd)}
 
 <!-- HEADER -->
 <div class="hdr">
-  <div class="logo">
+  <a class="logo" href="/" onclick="handleLogoClick(event)" title="New chat / Home">
     <div class="logo-hex">NIM</div>
     <div>
       <div class="logo-name">NIM CHAT</div>
     </div>
-  </div>
+  </a>
   <button class="chat-toggle" id="chatToggle" type="button" onclick="toggleDrawer()">☰ Chats</button>
   <button class="help-btn" type="button" onclick="openShortcutHelp()">?</button>
   <div class="stats" id="statsEl">
@@ -594,9 +588,7 @@ textarea#ti::placeholder{color:var(--textdd)}
     <span class="lbl">MODEL</span>
     <select id="msel" onchange="onMC()"></select>
     <div id="modelCtx" class="ctx-pill">CTX: --</div>
-  </div>
-  <div class="token-budget" id="tokenBudgetWarn">Budget: --</div>
-  <div class="mem-row">
+    <div class="token-budget" id="tokenBudgetWarn">Budget: --</div>
     <button type="button" id="memScopeBtn" class="mem-pill" onclick="toggleMemoryScope()">Memory: <strong>Current Chat</strong></button>
     <button type="button" id="ragChatBtn" class="mem-pill" onclick="toggleChatRag()">RAG: <strong>ON</strong></button>
   </div>
@@ -1314,7 +1306,21 @@ function applyBootPayload(payload){
 
   authUser=payload.user;
   convList=payload.conversations||[];
-  activeConversationId=payload.activeConversationId||null;
+
+  // If URL has ?c=ID, prefer that over the last-active conv
+  var urlId=window.__urlConvId||null;
+  if(urlId){
+    window.__urlConvId=null; // consume it once
+    activeConversationId=urlId;
+    // update URL to canonical form (replaceState so it's not a double history entry)
+    history.replaceState({convId:urlId},'','/?c='+encodeURIComponent(urlId));
+  } else {
+    activeConversationId=payload.activeConversationId||null;
+    if(activeConversationId){
+      history.replaceState({convId:activeConversationId},'','/?c='+encodeURIComponent(activeConversationId));
+    }
+  }
+
   setAuthUI();
   renderChatRagToggle();
   renderConversationSelect();
@@ -1831,7 +1837,7 @@ async function ensureConversation(){
   return await createConversation();
 }
 
-async function loadConversation(id){
+async function loadConversation(id,skipHistory){
   if(!id)return;
   activeConversationId=id;
   var data=await apiJSON('/api/messages?conversation_id='+encodeURIComponent(id));
@@ -1839,6 +1845,10 @@ async function loadConversation(id){
   renderChatRagToggle();
   renderConversationSelect();
   saveBootCache();
+  if(!skipHistory){
+    var url='/?c='+encodeURIComponent(id);
+    history.pushState({convId:id},'',url);
+  }
 }
 
 async function saveMessage(role,content,modelId){
@@ -2583,7 +2593,7 @@ function clr(){
   resetChatUI();
 }
 
-function newChat(){
+function newChat(skipHistory){
   activeConversationId=null;
   newChatRagEnabled=true;
   renderChatRagToggle();
@@ -2591,6 +2601,14 @@ function newChat(){
   resetChatUI();
   var csel=document.getElementById('csel');
   if(csel)csel.value='';
+  if(!skipHistory) history.pushState({convId:null},'','/');
+}
+
+// Logo click: if already on home (no active conv), do nothing; else newChat
+function handleLogoClick(e){
+  e.preventDefault();
+  if(activeConversationId) newChat();
+  // else already home, do nothing
 }
 
 // ── HELPERS ──
@@ -2716,14 +2734,7 @@ function registerServiceWorker(){
 
 function bindAndroidViewportInputGuard(){
   if(typeof window==='undefined' || !('visualViewport' in window)) return;
-  function syncVisualViewportHeight(){
-    var h=Math.max(320,Math.round(window.visualViewport.height));
-    document.documentElement.style.setProperty('--vvh',h+'px');
-  }
-  syncVisualViewportHeight();
-
   window.visualViewport.addEventListener('resize',function(){
-    syncVisualViewportHeight();
     var inp=document.getElementById('ti');
     if(document.activeElement===inp){
       setTimeout(function(){
@@ -2731,7 +2742,6 @@ function bindAndroidViewportInputGuard(){
       },80);
     }
   });
-  window.visualViewport.addEventListener('scroll',syncVisualViewportHeight);
 }
 function toast(msg,actionLabel,actionFn,duration){
   var t=document.getElementById('toast');
@@ -2816,6 +2826,26 @@ refreshModelMetaUI();
 updateVoiceButton();
 registerServiceWorker();
 bindAndroidViewportInputGuard();
+// ── URL ROUTING ──
+// Read ?c=ID from URL on load
+(function readUrlConv(){
+  try{
+    var params=new URLSearchParams(window.location.search);
+    var urlConvId=params.get('c');
+    if(urlConvId) window.__urlConvId=urlConvId;
+  }catch(e){}
+})();
+
+// Browser back/forward
+window.addEventListener('popstate',function(e){
+  var id=e.state&&e.state.convId;
+  if(id){
+    loadConversation(id,true);
+  } else {
+    newChat(true);
+  }
+});
+
 initAuth();
 </script>
 </body>
