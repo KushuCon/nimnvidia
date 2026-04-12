@@ -114,13 +114,6 @@ body.loading::after{z-index:9988}
   padding:7px 10px;border-radius:var(--r);cursor:pointer;white-space:nowrap;
 }
 .chat-toggle:active{border-color:var(--g2);color:var(--g)}
-.theme-btn{
-  display:inline-flex;align-items:center;justify-content:center;gap:6px;
-  background:#0e180a;border:1px solid var(--border2);color:var(--text);
-  font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.8px;
-  padding:7px 10px;border-radius:var(--r);cursor:pointer;white-space:nowrap;
-}
-.theme-btn:active{border-color:var(--g2);color:var(--g)}
 
 .logout-top{
   display:none;align-items:center;justify-content:center;
@@ -278,15 +271,9 @@ body.light .branch-item.active{background:#dbe7cc}
 .token-budget{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--textd)}
 .token-budget.warn{color:var(--amber)}
 .token-budget.crit{color:var(--red)}
-.sys-wrap{border:1px solid var(--border);border-radius:var(--r);background:var(--bg3);padding:6px}
-.sys-wrap summary{cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--textd)}
-.sys-area{width:100%;margin-top:6px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:'Share Tech Mono',monospace;font-size:10px;padding:8px;min-height:70px;resize:vertical}
-.sys-actions{display:flex;gap:6px;justify-content:flex-end;margin-top:6px}
 .mini-btn{background:transparent;border:1px solid var(--border2);color:var(--textd);font-family:'Share Tech Mono',monospace;font-size:8px;padding:4px 8px;border-radius:var(--r);cursor:pointer}
 .mini-btn.on{border-color:var(--g);color:var(--g)}
 .mini-btn.danger{border-color:#5a1a1a;color:#cc6666}
-.tpl-select{flex:1;min-width:0;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-family:'Share Tech Mono',monospace;font-size:9px;padding:6px;border-radius:var(--r)}
-.prompt-actions{display:flex;gap:6px;align-items:center}
 
 select#msel{
   flex:1;background:var(--bg3);color:var(--g);
@@ -632,7 +619,6 @@ textarea#ti::placeholder{color:var(--textdd)}
     </div>
   </div>
   <button class="chat-toggle" id="chatToggle" type="button" onclick="toggleDrawer()">☰ Chats</button>
-  <button class="theme-btn" id="themeBtn" type="button" onclick="toggleTheme()">☾ DARK</button>
   <button class="help-btn" type="button" onclick="openShortcutHelp()">?</button>
   <div class="stats" id="statsEl">
     <div class="sdot"></div>
@@ -654,20 +640,6 @@ textarea#ti::placeholder{color:var(--textdd)}
     <div id="modelCtx" class="ctx-pill">CTX: --</div>
   </div>
   <div class="token-budget" id="tokenBudgetWarn">Budget: --</div>
-  <details class="sys-wrap" id="sysWrap">
-    <summary>System Prompt / Persona</summary>
-    <textarea id="sysPromptInput" class="sys-area" placeholder="Example: You are concise, accurate, and answer in Hinglish."></textarea>
-    <div class="sys-actions">
-      <button type="button" class="mini-btn" onclick="saveSystemPrompt()">Save</button>
-      <button type="button" class="mini-btn danger" onclick="clearSystemPrompt()">Clear</button>
-    </div>
-  </details>
-  <div class="prompt-actions">
-    <select id="promptTemplateSelect" class="tpl-select"></select>
-    <button type="button" class="mini-btn" onclick="applySelectedPromptTemplate()">Use</button>
-    <button type="button" class="mini-btn" onclick="saveCurrentPromptTemplate()">Save Current</button>
-    <button type="button" class="mini-btn danger" onclick="deleteSelectedPromptTemplate()">Del</button>
-  </div>
   <div class="mem-row">
     <button type="button" id="memScopeBtn" class="mem-pill" onclick="toggleMemoryScope()">Memory: <strong>Current Chat</strong></button>
     <button type="button" id="ragChatBtn" class="mem-pill" onclick="toggleChatRag()">RAG: <strong>ON</strong></button>
@@ -718,13 +690,8 @@ textarea#ti::placeholder{color:var(--textdd)}
     <button class="tbtn" type="button" onclick="triggerImageUpload()">IMG</button>
     <button class="tbtn" type="button" onclick="triggerPdfUpload()">PDF+</button>
     <button class="tbtn" type="button" id="voiceBtn" onclick="toggleVoiceInput()">🎙 VOICE</button>
-    <button class="tbtn" type="button" onclick="regenerateLastAnswer()">⟳ REGEN</button>
-    <button class="tbtn" type="button" onclick="xmd()">⬇ MD</button>
-    <button class="tbtn" type="button" onclick="xjson()">⬇ JSON</button>
     <button class="tbtn" onclick="xpdf()">⬇ PDF</button>
-    <button class="tbtn" type="button" onclick="document.getElementById('kbdModal').classList.toggle('open')">?</button>
     <button class="tbtn" type="button" id="stopBtn" style="display:none" onclick="stopStreaming()">■ STOP</button>
-    <button class="tbtn" type="button" id="scrollLockBtn" onclick="toggleAutoScroll()">SCROLL ON</button>
     <button class="tbtn del" onclick="clr()">✕ CLEAR</button>
     <span class="cc" id="cc">0 chars</span>
   </div>
@@ -772,12 +739,8 @@ let pendingDeletedConversation=null;
 let pendingDeleteUndoTimer=null;
 let toastHideTimer=null;
 let drawerSearchQuery='';
-let systemPrompt='';
-let promptTemplates=[];
 let isStreaming=false;
 let activeStreamController=null;
-let autoScrollEnabled=true;
-let currentTheme='dark';
 let speechRecognition=null;
 let speechListening=false;
 let speechBaseInput='';
@@ -1125,9 +1088,6 @@ const CHAT_RAG_TOGGLES_KEY='nimChatRagTogglesV1';
 const BOOT_MIN_DELAY=260;
 const RAG_SETTINGS_KEY='nimRagSettingsV1';
 const RECENT_WINDOW_SIZE=18;
-const SYS_PROMPT_KEY='nimSystemPromptV1';
-const PROMPT_TEMPLATES_KEY='nimPromptTemplatesV1';
-const THEME_KEY='nimThemeV1';
 const SpeechRecognitionCtor=(typeof window!=='undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition)) || null;
 
 const MODEL_CUTOFFS={
@@ -1358,82 +1318,6 @@ function toggleCompareMode(){
   compareMode=!compareMode;
   renderCompareMode();
   toast('Compare mode: '+(compareMode?'ON':'OFF'));
-}
-
-function loadSystemPrompt(){
-  try{systemPrompt=String(localStorage.getItem(SYS_PROMPT_KEY)||'').trim();}catch(e){systemPrompt='';}
-  var el=document.getElementById('sysPromptInput');
-  if(el) el.value=systemPrompt;
-}
-
-function saveSystemPrompt(){
-  var el=document.getElementById('sysPromptInput');
-  systemPrompt=String(el && el.value || '').trim();
-  try{localStorage.setItem(SYS_PROMPT_KEY,systemPrompt);}catch(e){}
-  toast(systemPrompt?'System prompt saved':'System prompt cleared');
-}
-
-function clearSystemPrompt(){
-  systemPrompt='';
-  var el=document.getElementById('sysPromptInput');
-  if(el) el.value='';
-  try{localStorage.removeItem(SYS_PROMPT_KEY);}catch(e){}
-  toast('System prompt cleared');
-}
-
-function loadPromptTemplates(){
-  try{promptTemplates=JSON.parse(localStorage.getItem(PROMPT_TEMPLATES_KEY)||'[]')||[];}catch(e){promptTemplates=[];}
-  promptTemplates=promptTemplates.filter(function(p){return typeof p==='string' && p.trim();}).slice(0,10);
-  renderPromptTemplateSelect();
-}
-
-function savePromptTemplates(){
-  try{localStorage.setItem(PROMPT_TEMPLATES_KEY,JSON.stringify(promptTemplates.slice(0,10)));}catch(e){}
-}
-
-function renderPromptTemplateSelect(){
-  var sel=document.getElementById('promptTemplateSelect');
-  if(!sel) return;
-  sel.innerHTML='';
-  var ph=document.createElement('option');
-  ph.value='';
-  ph.textContent='Prompt Templates';
-  sel.appendChild(ph);
-  promptTemplates.forEach(function(p,i){
-    var o=document.createElement('option');
-    o.value=String(i);
-    o.textContent=(i+1)+'. '+p.slice(0,80);
-    sel.appendChild(o);
-  });
-}
-
-function applySelectedPromptTemplate(){
-  var sel=document.getElementById('promptTemplateSelect');
-  if(!sel || !sel.value) return;
-  var i=Number(sel.value);
-  if(!Number.isInteger(i) || !promptTemplates[i]) return;
-  setP(promptTemplates[i]);
-}
-
-function saveCurrentPromptTemplate(){
-  var t=String(document.getElementById('ti').value||'').trim();
-  if(!t){toast('Type prompt first');return;}
-  promptTemplates.unshift(t);
-  promptTemplates=[...new Set(promptTemplates)].slice(0,10);
-  savePromptTemplates();
-  renderPromptTemplateSelect();
-  toast('Prompt saved');
-}
-
-function deleteSelectedPromptTemplate(){
-  var sel=document.getElementById('promptTemplateSelect');
-  if(!sel || !sel.value) return;
-  var i=Number(sel.value);
-  if(!Number.isInteger(i) || !promptTemplates[i]) return;
-  promptTemplates.splice(i,1);
-  savePromptTemplates();
-  renderPromptTemplateSelect();
-  toast('Prompt deleted');
 }
 
 function getCurrentHistoryTokenUsage(){
@@ -1799,7 +1683,6 @@ async function buildPromptMessages(currentInput,modelId,userContentOverride){
     if(userContentOverride && onlyRecent.length && onlyRecent[onlyRecent.length-1].role==='user'){
       onlyRecent[onlyRecent.length-1]={role:'user',content:userContentOverride};
     }
-    if(systemPrompt) return [{role:'system',content:systemPrompt}].concat(onlyRecent);
     return onlyRecent;
   }
 
@@ -1818,9 +1701,6 @@ async function buildPromptMessages(currentInput,modelId,userContentOverride){
   lastWebSnippetsUsed=webSnippets.slice(0,6);
   var webMsg=buildWebSystemMessage(webSnippets);
   var out=[];
-  if(systemPrompt){
-    out.push({role:'system',content:systemPrompt});
-  }
   if(webMsg) out.push(webMsg);
   if(ragMsg) out.push(ragMsg);
   Array.prototype.push.apply(out,recent);
@@ -2675,65 +2555,6 @@ async function forkConversationFromMessage(messageId){
   }
 }
 
-function buildMarkdownExport(){
-  var convo=getActiveConversation();
-  var lines=[];
-  lines.push('# NIM Chat Export');
-  lines.push('');
-  lines.push('**Conversation:** '+(convo && convo.title ? convo.title : 'Current Chat'));
-  lines.push('**Exported:** '+new Date().toLocaleString('en-IN'));
-  if(convo && Array.isArray(convo.tags) && convo.tags.length){
-    lines.push('**Tags:** '+convo.tags.join(', '));
-  }
-  lines.push('');
-  (activeMessagesCache||[]).forEach(function(msg){
-    var label=msg.role==='assistant' ? 'Assistant' : (msg.role==='user' ? 'User' : 'System');
-    lines.push('## '+label);
-    lines.push('');
-    lines.push(String(msg.content||'').replace(/\n/g,'  \n'));
-    lines.push('');
-  });
-  return lines.join('\n');
-}
-
-function xmd(){
-  var md=buildMarkdownExport();
-  var blob=new Blob([md],{type:'text/markdown'});
-  var a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='nim-chat-'+Date.now()+'.md';
-  a.click();
-  toast('Markdown export downloaded');
-}
-
-function xjson(){
-  var convo=getActiveConversation();
-  var payload={
-    exported_at:new Date().toISOString(),
-    conversation:{
-      id:convo && convo.id || null,
-      title:convo && convo.title || 'Current Chat',
-      tags:convo && convo.tags || []
-    },
-    messages:(activeMessagesCache||[]).map(function(m){
-      return {
-        id:m.id||null,
-        role:m.role,
-        content:m.content,
-        model_id:m.model_id||null,
-        created_at:m.created_at||null,
-        token_est:m.token_est||estimateTokens(m.content)
-      };
-    })
-  };
-  var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
-  var a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='nim-chat-'+Date.now()+'.json';
-  a.click();
-  toast('JSON export downloaded');
-}
-
 function setStopButtonVisible(show){
   var btn=document.getElementById('stopBtn');
   if(btn) btn.style.display=show?'inline-block':'none';
@@ -2745,12 +2566,6 @@ function stopStreaming(){
     try{activeStreamController.abort();}catch(e){}
   }
   toast('Stopped');
-}
-
-function toggleAutoScroll(){
-  autoScrollEnabled=!autoScrollEnabled;
-  var btn=document.getElementById('scrollLockBtn');
-  if(btn) btn.textContent=autoScrollEnabled?'SCROLL ON':'SCROLL OFF';
 }
 
 // ── SEND ──
@@ -2820,29 +2635,6 @@ function updateStreamBubble(msgEl,text,opts){
     setMessageTokenEstimate(msgEl,text||'');
   }
   sc();
-}
-
-function regenerateLastAnswer(){
-  if(isStreaming){toast('Wait for current generation to finish');return;}
-  if(!authUser){toast('Login required');return;}
-  if(!hist.length){toast('Nothing to regenerate');return;}
-
-  var lastUserIdx=-1;
-  for(var i=hist.length-1;i>=0;i--){
-    if(hist[i] && hist[i].role==='user'){
-      lastUserIdx=i;
-      break;
-    }
-  }
-  if(lastUserIdx<0){toast('No user prompt found');return;}
-  var prompt=String(hist[lastUserIdx].content||'').trim();
-  if(!prompt){toast('Last prompt is empty');return;}
-
-  hist=hist.slice(0,lastUserIdx);
-  activeMessagesCache=activeMessagesCache.slice(0,lastUserIdx);
-  rebuildMessagesFromHistory();
-  setP(prompt);
-  go();
 }
 
 function extractVisibleAssistantText(raw){
@@ -3210,25 +3002,6 @@ function newChat(){
 }
 
 // ── HELPERS ──
-function applyTheme(theme){
-  currentTheme=(theme==='light') ? 'light' : 'dark';
-  document.body.classList.toggle('light',currentTheme==='light');
-  var btn=document.getElementById('themeBtn');
-  if(btn) btn.textContent=currentTheme==='light' ? '☀ LIGHT' : '☾ DARK';
-}
-
-function loadTheme(){
-  var stored='dark';
-  try{stored=localStorage.getItem(THEME_KEY)||'dark';}catch(e){}
-  applyTheme(stored);
-}
-
-function toggleTheme(){
-  var next=currentTheme==='light' ? 'dark' : 'light';
-  applyTheme(next);
-  try{localStorage.setItem(THEME_KEY,next);}catch(e){}
-}
-
 function setInputText(txt){
   var ti=document.getElementById('ti');
   if(!ti) return;
@@ -3326,7 +3099,6 @@ function hk(e){
 function oi(el){ar(el);document.getElementById('cc').textContent=el.value.length+' chars';}
 function ar(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,110)+'px';}
 function sc(){
-  if(!autoScrollEnabled) return;
   var c=document.getElementById('msgs');
   c.scrollTop=c.scrollHeight;
 }
@@ -3441,10 +3213,7 @@ document.addEventListener('keydown',function(e){
 loadRagSettings();
 loadChatRagToggles();
 renderCompareMode();
-loadSystemPrompt();
-loadPromptTemplates();
 refreshModelMetaUI();
-loadTheme();
 updateVoiceButton();
 registerServiceWorker();
 bindAndroidViewportInputGuard();
