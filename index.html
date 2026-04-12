@@ -575,14 +575,12 @@ textarea#ti::placeholder{color:var(--textdd)}
   <div class="crow wrap">
     <span class="lbl">MODEL</span>
     <select id="msel" onchange="onMC()"></select>
-    <button type="button" id="favModelBtn" class="mini-btn" onclick="toggleModelFavorite()">☆ PIN</button>
     <div id="modelCtx" class="ctx-pill">CTX: --</div>
   </div>
   <div class="token-budget" id="tokenBudgetWarn">Budget: --</div>
   <div class="mem-row">
     <button type="button" id="memScopeBtn" class="mem-pill" onclick="toggleMemoryScope()">Memory: <strong>Current Chat</strong></button>
     <button type="button" id="ragChatBtn" class="mem-pill" onclick="toggleChatRag()">RAG: <strong>ON</strong></button>
-    <button type="button" id="compareBtn" class="mem-pill" onclick="toggleCompareMode()">Compare: <strong>OFF</strong></button>
   </div>
   <div id="authGate" class="auth-shell">
     <div class="auth-box" id="authBox">
@@ -670,7 +668,6 @@ let ragScope='current';
 let globalStats={total:0,tavily:0,models:{}};
 let chatRagToggles={};
 let newChatRagEnabled=true;
-let compareMode=false;
 let pendingImageAttachment=null;
 let pendingPdfAttachment=null;
 let lastWebSnippetsUsed=[];
@@ -973,13 +970,7 @@ function prettyCtx(n){
 function refreshModelMetaUI(){
   var m=getSelectedModel();
   var ctxEl=document.getElementById('modelCtx');
-  var favBtn=document.getElementById('favModelBtn');
   if(ctxEl) ctxEl.textContent='CTX: '+prettyCtx(getModelContextWindow(m));
-  if(favBtn && m){
-    var fav=favoriteModelIds.includes(m.id);
-    favBtn.textContent=(fav?'★ ':'☆ ')+'PIN';
-    favBtn.classList.toggle('on',fav);
-  }
   updateTokenBudgetWarning();
 }
 
@@ -1228,18 +1219,6 @@ function toggleMemoryScope(){
 function getActiveConversation(){
   if(!activeConversationId) return null;
   return (convList||[]).find(function(c){return c.id===activeConversationId;})||null;
-}
-
-function renderCompareMode(){
-  var btn=document.getElementById('compareBtn');
-  if(!btn) return;
-  btn.innerHTML='Compare: <strong>'+(compareMode?'ON':'OFF')+'</strong>';
-}
-
-function toggleCompareMode(){
-  compareMode=!compareMode;
-  renderCompareMode();
-  toast('Compare mode: '+(compareMode?'ON':'OFF'));
 }
 
 function getCurrentHistoryTokenUsage(){
@@ -2173,69 +2152,14 @@ function addSys(txt,err){
   c.appendChild(d);sc();
 }
 
-function getCompareModelSet(baseIndex){
-  var out=[];
-  var seen={};
-  function pushModel(m){
-    if(!m || !isChatCapableModel(m)) return;
-    if(seen[m.id]) return;
-    seen[m.id]=true;
-    out.push(m);
-  }
-  pushModel(MODELS[baseIndex]);
-  for(var i=baseIndex+1;i<MODELS.length && out.length<3;i++) pushModel(MODELS[i]);
-  for(var j=0;j<baseIndex && out.length<3;j++) pushModel(MODELS[j]);
-  return out.slice(0,3);
-}
-
-function addCompareBlock(results, promptText){
-  var c=document.getElementById('msgs');
-  var wrap=document.createElement('div');
-  wrap.className='cmp-wrap';
-  var head=document.createElement('div');
-  head.className='cmp-head';
-  var left=document.createElement('div');
-  var title=document.createElement('div');
-  title.className='cmp-title';
-  title.textContent='MODEL COMPARISON';
-  var sub=document.createElement('div');
-  sub.className='cmp-sub';
-  sub.textContent='Prompt: '+String(promptText||'').slice(0,90);
-  left.appendChild(title);
-  left.appendChild(sub);
-  head.appendChild(left);
-  wrap.appendChild(head);
-
-  var grid=document.createElement('div');
-  grid.className='cmp-grid';
-  (results||[]).forEach(function(result){
-    var card=document.createElement('div');
-    card.className='cmp-card';
-    var model=document.createElement('div');
-    model.className='cmp-model';
-    model.textContent=(result.model && result.model.name ? result.model.name : 'Model') + (result.ok ? '' : ' (error)');
-    var text=document.createElement('div');
-    text.className='cmp-text';
-    text.innerHTML=fmt(result.reply || result.error || '(empty)');
-    renderMathInNode(text);
-    card.appendChild(model);
-    card.appendChild(text);
-    grid.appendChild(card);
-  });
-  wrap.appendChild(grid);
-  c.appendChild(wrap);
-  sc();
-  return wrap;
-}
-
 async function setMessageFeedback(messageId,feedback){
-  if(!activeConversationId) return;
+  if(!authUser || !messageId) return;
   try{
-    await apiJSON('/api/messages',{method:'PATCH',body:{action:'feedback',conversation_id:activeConversationId,message_id:messageId,feedback:feedback||null}});
+    await apiJSON('/api/messages',{
+      method:'PATCH',
+      body:{action:'feedback',id:messageId,feedback:feedback||null}
+    });
     await loadConversation(activeConversationId);
-    if(feedback==='up') toast('Feedback saved!');
-    else if(feedback==='down') toast('Noted, will improve RAG');
-    else toast('Feedback cleared');
   }catch(e){
     toast('Feedback failed: '+((e.data&&e.data.error)||e.message));
   }
@@ -2492,95 +2416,59 @@ async function go(){
 
   try{
     var promptMsgs=await buildPromptMessages(txt||userDisplayText,m.id,userPayloadContent);
-    if(compareMode){
-      var compareModels=getCompareModelSet(Number(msel.value));
-      var compareResults=await Promise.all(compareModels.map(async function(cm){
-        try{
-          var payload={model:cm.id,messages:promptMsgs,max_tokens:4096,temperature:0.7,stream:false};
-          var res=await postChat(payload,null);
-          var data=await res.json();
-          if(!res.ok){
-            return {model:cm,ok:false,error:'ERROR '+res.status+': '+((data && (data.detail||data.message||data.error))||JSON.stringify(data))};
-          }
-          var reply=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'(empty)';
-          reply=sanitizeAssistantOutput(reply);
-          return {model:cm,ok:true,reply:appendSourceCitations(reply,lastWebSnippetsUsed)};
-        }catch(e){
-          return {model:cm,ok:false,error:'NETWORK ERROR: '+e.message};
-        }
-      }));
+    var payload={model:m.id,messages:promptMsgs,max_tokens:4096,temperature:0.7,stream:true};
+    activeStreamController=new AbortController();
+    isStreaming=true;
+    setStopButtonVisible(true);
+    var res=await postChat(payload,activeStreamController.signal);
     rmTyp();
-      addCompareBlock(compareResults,txt||userDisplayText);
-      var compareSuccessCount=0;
-      for(var i=0;i<compareResults.length;i++){
-        var result=compareResults[i];
-        if(!result.ok) continue;
-        compareSuccessCount++;
-        hist.push({role:'assistant',content:result.reply});
-        activeMessagesCache.push({role:'assistant',content:result.reply,model_id:result.model.id,created_at:new Date().toISOString(),token_est:estimateTokens(result.reply)});
-        try{await saveMessage('assistant',result.reply,result.model.id);}catch(e){addSys('Warning: assistant message not saved.',true);} 
+    if(!res.ok){
+      var data={};
+      try{data=await res.json();}catch(_){data={error:'HTTP '+res.status};}
+      const isUpstreamModel404 =
+        res.status===404 &&
+        data &&
+        (data.status===404 || /non-json/i.test(data.error||''));
+
+      if(isUpstreamModel404){
+        addSys('Selected model does not support chat endpoint. Pick a chat model (reasoning/coding) and try again.',true);
+      } else if(res.status===404){
+        addSys('ERROR 404: API route missing. Deploy on Vercel (with /api/chat) or run via `vercel dev`.',true);
+      } else {
+        addSys('ERROR '+res.status+': '+(data.detail||data.message||JSON.stringify(data)),true);
       }
+    } else {
+      var streamEl=addMsg('ass','',m.name,{webUsed:lastWebSnippetsUsed.length>0,messageId:null,tokenEstimate:0,histIndex:hist.length});
+      setMessageTokenEstimate(streamEl,0);
+      var ctype=String(res.headers.get('content-type')||'').toLowerCase();
+      var reply='';
+      if(ctype.includes('text/event-stream')){
+        reply=await readStreamingAssistantReply(res,streamEl);
+      }else{
+        var dataOk={};
+        try{dataOk=await res.json();}catch(_){dataOk={};}
+        reply=(dataOk.choices&&dataOk.choices[0]&&dataOk.choices[0].message&&dataOk.choices[0].message.content)||'(empty)';
+        reply=sanitizeAssistantOutput(reply);
+        updateStreamBubble(streamEl,reply,{skipTokenEstimate:true});
+      }
+      if(!reply) reply='(empty)';
+      reply=sanitizeAssistantOutput(reply);
+      reply=appendSourceCitations(reply,lastWebSnippetsUsed);
+      updateStreamBubble(streamEl,reply);
+      hist.push({role:'assistant',content:reply});
+      activeMessagesCache.push({role:'assistant',content:reply,model_id:m.id,created_at:new Date().toISOString(),token_est:estimateTokens(reply)});
       saveBootCache();
-      if(compareSuccessCount>0){
-        recCall(m.id).catch(function(){});
-      }
+      try{
+        var savedAss=await saveMessage('assistant',reply,m.id);
+        if(savedAss && savedAss.id){
+          streamEl.setAttribute('data-message-id',savedAss.id);
+          activeMessagesCache[activeMessagesCache.length-1].id=savedAss.id;
+          saveBootCache();
+        }
+      }catch(e){addSys('Warning: assistant message not saved.',true);} 
+      recCall(m.id).catch(function(){});
       loadConversations(false).catch(function(){});
       clearPendingAttachments();
-    }else{
-      var payload={model:m.id,messages:promptMsgs,max_tokens:4096,temperature:0.7,stream:true};
-      activeStreamController=new AbortController();
-      isStreaming=true;
-      setStopButtonVisible(true);
-      var res=await postChat(payload,activeStreamController.signal);
-      rmTyp();
-      if(!res.ok){
-        var data={};
-        try{data=await res.json();}catch(_){data={error:'HTTP '+res.status};}
-        const isUpstreamModel404 =
-          res.status===404 &&
-          data &&
-          (data.status===404 || /non-json/i.test(data.error||''));
-
-        if(isUpstreamModel404){
-          addSys('Selected model does not support chat endpoint. Pick a chat model (reasoning/coding) and try again.',true);
-        } else if(res.status===404){
-          addSys('ERROR 404: API route missing. Deploy on Vercel (with /api/chat) or run via `vercel dev`.',true);
-        } else {
-          addSys('ERROR '+res.status+': '+(data.detail||data.message||JSON.stringify(data)),true);
-        }
-      } else {
-        var streamEl=addMsg('ass','',m.name,{webUsed:lastWebSnippetsUsed.length>0,messageId:null,tokenEstimate:0,histIndex:hist.length});
-        setMessageTokenEstimate(streamEl,0);
-        var ctype=String(res.headers.get('content-type')||'').toLowerCase();
-        var reply='';
-        if(ctype.includes('text/event-stream')){
-          reply=await readStreamingAssistantReply(res,streamEl);
-        }else{
-          var dataOk={};
-          try{dataOk=await res.json();}catch(_){dataOk={};}
-          reply=(dataOk.choices&&dataOk.choices[0]&&dataOk.choices[0].message&&dataOk.choices[0].message.content)||'(empty)';
-          reply=sanitizeAssistantOutput(reply);
-          updateStreamBubble(streamEl,reply,{skipTokenEstimate:true});
-        }
-        if(!reply) reply='(empty)';
-        reply=sanitizeAssistantOutput(reply);
-        reply=appendSourceCitations(reply,lastWebSnippetsUsed);
-        updateStreamBubble(streamEl,reply);
-        hist.push({role:'assistant',content:reply});
-        activeMessagesCache.push({role:'assistant',content:reply,model_id:m.id,created_at:new Date().toISOString(),token_est:estimateTokens(reply)});
-        saveBootCache();
-        try{
-          var savedAss=await saveMessage('assistant',reply,m.id);
-          if(savedAss && savedAss.id){
-            streamEl.setAttribute('data-message-id',savedAss.id);
-            activeMessagesCache[activeMessagesCache.length-1].id=savedAss.id;
-            saveBootCache();
-          }
-        }catch(e){addSys('Warning: assistant message not saved.',true);} 
-        recCall(m.id).catch(function(){});
-        loadConversations(false).catch(function(){});
-        clearPendingAttachments();
-      }
     }
   }catch(e){
     rmTyp();
@@ -2898,7 +2786,6 @@ document.addEventListener('keydown',function(e){
 
 loadRagSettings();
 loadChatRagToggles();
-renderCompareMode();
 refreshModelMetaUI();
 updateVoiceButton();
 registerServiceWorker();
