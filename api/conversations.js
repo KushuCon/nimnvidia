@@ -28,21 +28,11 @@ function estimateTokens(text) {
   return Math.max(1, Math.ceil(String(text || '').length / 4));
 }
 
-function estimateConversationTokens(messages) {
-  return (messages || []).reduce((sum, msg) => sum + estimateTokens(msg && msg.content), 0);
-}
-
 async function getOwnedConversation(conversationId, userId) {
   const rows = await supabaseRest(
     `conversations?select=id,title,tags,total_tokens_est&user_id=eq.${userId}&id=eq.${conversationId}&limit=1`
   );
   return rows && rows[0] ? rows[0] : null;
-}
-
-async function getConversationMessages(conversationId) {
-  return await supabaseRest(
-    `messages?select=id,role,content,model_id,created_at&conversation_id=eq.${conversationId}&order=id.asc`
-  );
 }
 
 export default async function handler(req, res) {
@@ -59,60 +49,8 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       const payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
-      const sourceConversationId = String(payload.source_conversation_id || '').trim();
-      const forkMessageId = String(payload.fork_message_id || '').trim();
       const title = String(payload.title || 'New Chat').trim().slice(0, 120) || 'New Chat';
       const tags = normalizeTags(payload.tags || []);
-
-      if (sourceConversationId && forkMessageId) {
-        const sourceConversation = await getOwnedConversation(sourceConversationId, session.user_id);
-        if (!sourceConversation) {
-          return res.status(404).json({ error: 'Conversation not found' });
-        }
-
-        const sourceMessages = await getConversationMessages(sourceConversationId);
-        const forkIndex = (sourceMessages || []).findIndex((row) => String(row.id) === forkMessageId);
-        if (forkIndex < 0) {
-          return res.status(404).json({ error: 'Message not found' });
-        }
-
-        const copiedMessages = (sourceMessages || []).slice(0, forkIndex + 1);
-        const forkTitle = String(payload.title || `Fork of ${sourceConversation.title || 'New Chat'}`)
-          .trim()
-          .slice(0, 120) || `Fork of ${sourceConversation.title || 'New Chat'}`;
-        const forkTags = tags.length ? tags : normalizeTags(sourceConversation.tags || []);
-
-        const conversationRows = await supabaseRest('conversations', {
-          method: 'POST',
-          body: [
-            {
-              user_id: session.user_id,
-              title: forkTitle,
-              tags: forkTags,
-              total_tokens_est: estimateConversationTokens(copiedMessages),
-            },
-          ],
-        });
-
-        const conversation = conversationRows && conversationRows[0] ? conversationRows[0] : null;
-        if (!conversation) {
-          return res.status(500).json({ error: 'Could not create forked conversation' });
-        }
-
-        if (copiedMessages.length) {
-          await supabaseRest('messages', {
-            method: 'POST',
-            body: copiedMessages.map((msg) => ({
-              conversation_id: conversation.id,
-              role: msg.role,
-              content: msg.content,
-              model_id: msg.model_id || null,
-            })),
-          });
-        }
-
-        return res.status(200).json({ conversation });
-      }
 
       const rows = await supabaseRest('conversations', {
         method: 'POST',

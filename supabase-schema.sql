@@ -131,19 +131,6 @@ create index if not exists memory_chunks_conversation_idx on memory_chunks(conve
 create index if not exists memory_chunks_message_idx on memory_chunks(message_id);
 create index if not exists idx_memory_chunks_user_conv on memory_chunks(user_id, conversation_id);
 
-create table if not exists pinned_messages (
-  id bigserial primary key,
-  user_id uuid not null references users(id) on delete cascade,
-  message_id bigint not null references messages(id) on delete cascade,
-  conversation_id uuid not null references conversations(id) on delete cascade,
-  created_at timestamptz not null default now(),
-  unique (user_id, message_id)
-);
-
-create index if not exists pinned_messages_user_idx on pinned_messages(user_id);
-create index if not exists pinned_messages_conversation_idx on pinned_messages(conversation_id);
-create index if not exists pinned_messages_message_idx on pinned_messages(message_id);
-
 create table if not exists message_feedback (
   id bigserial primary key,
   user_id uuid not null references users(id) on delete cascade,

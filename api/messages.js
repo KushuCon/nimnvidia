@@ -98,7 +98,6 @@ async function decorateMessages(rows, session, conversationId) {
 
   const idList = `(${messageIds.join(',')})`;
   let feedbackMap = {};
-  let pinnedMap = {};
 
   try {
     const feedbackRows = await supabaseRest(
@@ -109,18 +108,8 @@ async function decorateMessages(rows, session, conversationId) {
     feedbackMap = {};
   }
 
-  try {
-    const pinRows = await supabaseRest(
-      `pinned_messages?select=message_id&user_id=eq.${session.user_id}&conversation_id=eq.${conversationId}&message_id=in.${idList}`
-    );
-    pinnedMap = Object.fromEntries((pinRows || []).map((row) => [String(row.message_id), true]));
-  } catch {
-    pinnedMap = {};
-  }
-
   return (rows || []).map((row) => ({
     ...row,
-    pinned: !!pinnedMap[String(row.id)],
     feedback: feedbackMap[String(row.id)] || null,
   }));
 }
@@ -214,26 +203,6 @@ export default async function handler(req, res) {
 
       const message = await getOwnedMessage(messageId, conversationId, session.user_id);
       if (!message) return res.status(404).json({ error: 'Message not found' });
-
-      if (action === 'pin') {
-        const pinned = payload.pinned !== false;
-        await supabaseRest(`pinned_messages?user_id=eq.${session.user_id}&message_id=eq.${messageId}`, {
-          method: 'DELETE',
-        });
-        if (pinned) {
-          await supabaseRest('pinned_messages', {
-            method: 'POST',
-            body: [
-              {
-                user_id: session.user_id,
-                message_id: Number(messageId),
-                conversation_id: conversationId,
-              },
-            ],
-          });
-        }
-        return res.status(200).json({ pinned });
-      }
 
       if (action === 'feedback') {
         const feedback = String(payload.feedback || '').trim().toLowerCase();

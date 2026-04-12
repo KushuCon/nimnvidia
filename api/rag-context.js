@@ -196,7 +196,6 @@ export default async function handler(req, res) {
     const snippets = [];
     const variantQueries = await expandQueryVariants(query);
     const vectorMessageIds = new Set();
-    const pinnedIds = new Set();
 
     // 1) Vector retrieval from indexed chunks, with query expansion.
     for (const variant of variantQueries) {
@@ -275,38 +274,6 @@ export default async function handler(req, res) {
       snippets.push(...scored.slice(0, limit * 3));
     }
 
-    // 4) Pinned messages always surface first.
-    try {
-      const idList = `(${ids.join(',')})`;
-      const pinnedRows = await supabaseRest(
-        `pinned_messages?select=message_id,conversation_id,created_at&user_id=eq.${session.user_id}&conversation_id=in.${idList}&order=created_at.desc&limit=40`
-      );
-      const pinnedMessageIds = Array.from(
-        new Set((pinnedRows || []).map((row) => String(row.message_id)).filter(Boolean))
-      );
-      pinnedMessageIds.forEach((id) => pinnedIds.add(String(id)));
-      if (pinnedMessageIds.length) {
-        const pinnedMessageRows = await supabaseRest(
-          `messages?select=id,conversation_id,role,content,model_id,created_at&id=in.(${pinnedMessageIds.join(',')})&conversation_id=in.${idList}`
-        );
-        (pinnedMessageRows || []).forEach((row, idx) => {
-          snippets.push({
-            source: 'pinned',
-            pinned: true,
-            message_id: row.id,
-            conversation_id: row.conversation_id,
-            title: titleById[row.conversation_id] || 'Chat',
-            role: row.role,
-            text: preview(row.content),
-            created_at: row.created_at,
-            score: 999 - idx * 0.01,
-          });
-        });
-      }
-    } catch (err) {
-      logRecoverable('pinnedMessages', err);
-    }
-
     const allMessageIds = Array.from(
       new Set(snippets.map((snippet) => String(snippet.message_id || '')).filter(Boolean))
     );
@@ -333,16 +300,8 @@ export default async function handler(req, res) {
       logRecoverable('conversationDownvotePenalty', err);
     }
 
-    // Pin boost so pinned notes remain top-priority.
-    snippets.forEach((snippet) => {
-      if (snippet.message_id && pinnedIds.has(String(snippet.message_id))) {
-        snippet.score = Number(snippet.score || 0) + 10;
-      }
-    });
-
-    const pinned = snippets.filter((snippet) => snippet.source === 'pinned').sort((a, b) => b.score - a.score);
-    const fused = rrf(snippets.filter((snippet) => snippet.source !== 'pinned'));
-    return res.status(200).json({ snippets: dedupeSnippets([...pinned, ...fused], limit) });
+    const fused = rrf(snippets);
+    return res.status(200).json({ snippets: dedupeSnippets(fused, limit) });
   } catch (err) {
     return res.status(err.status || 500).json({
       error: err.message || 'RAG retrieval error',
