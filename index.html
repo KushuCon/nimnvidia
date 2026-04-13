@@ -1456,6 +1456,7 @@ function buildWebSystemMessage(snippets){
     role:'system',
     content:'Use only these live results for freshness-sensitive facts. '
       +'Cite URLs briefly. Maintain your usual response format with ### headings and --- dividers. '
+      +'Answer only in English or Hinglish using Roman script. Do not use Hindi in Devanagari script. '
       +'Date: '+new Date().toDateString()+'.\n\n'
       +'LIVE RESULTS:\n'+lines.join('\n\n')
   };
@@ -1464,7 +1465,7 @@ function buildWebSystemMessage(snippets){
 function buildFormatSystemMessage(){
   return {
     role:'system',
-    content:'Always respond using consistent markdown: use ### for section headings, --- for dividers between sections, and bullet points (- ) for lists. Never mix heading styles within a single reply.'
+    content:'Always respond using consistent markdown: use ### for section headings, --- for dividers between sections, and bullet points (- ) for lists. Never mix heading styles within a single reply. Default response language must be English or Hinglish in Roman script only, never Hindi Devanagari.'
   };
 }
 
@@ -1596,7 +1597,7 @@ function buildRagSystemMessage(snippets){
   };
 }
 
-function logRagDebug(snippets,webSnippets){
+function logRagDebug(snippets,webSnippets,reason){
   if(typeof window==='undefined' || !window.__ragDebug) return;
   var mem=Array.isArray(snippets) ? snippets : [];
   var web=Array.isArray(webSnippets) ? webSnippets : [];
@@ -1611,7 +1612,11 @@ function logRagDebug(snippets,webSnippets){
     console.log((i+1)+'. ['+src+'] score:'+scoreText+' | '+title+' | '+text+'...');
   });
   console.log('Web snippets:', web.length);
+  console.log('Web route reason:', reason || 'n/a');
   console.groupEnd();
+  if(typeof addSys==='function'){
+    addSys('RAG DEBUG: mem='+mem.length+' | web='+web.length+' | reason='+(reason||'n/a'),false);
+  }
 }
 
 async function buildPromptMessages(currentInput,modelId,userContentOverride){
@@ -1626,7 +1631,7 @@ async function buildPromptMessages(currentInput,modelId,userContentOverride){
     if(userContentOverride && onlyRecent.length && onlyRecent[onlyRecent.length-1].role==='user'){
       onlyRecent[onlyRecent.length-1]={role:'user',content:userContentOverride};
     }
-    logRagDebug([],[]);
+    logRagDebug([],[],'rag-disabled');
     onlyRecent.unshift(fmt);
     return onlyRecent;
   }
@@ -1645,7 +1650,7 @@ async function buildPromptMessages(currentInput,modelId,userContentOverride){
   var webSnippets=webRoute.enabled ? await fetchWebSnippets(currentInput,modelId,webRoute.reason,webLimit) : [];
   lastWebSnippetsUsed=webSnippets.slice(0,6);
   var webMsg=buildWebSystemMessage(webSnippets);
-  logRagDebug(snippets,webSnippets);
+  logRagDebug(snippets,webSnippets,webRoute.reason+(webRoute.enabled?'|enabled':'|disabled'));
   var out=[];
   out.unshift(fmt);
   if(webMsg) out.push(webMsg);
