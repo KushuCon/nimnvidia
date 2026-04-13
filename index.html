@@ -1117,7 +1117,10 @@ const WEB_TRIGGER_TERMS=[
   'price','stock','score','result','winner','weather','breaking',
   'war','conflict','attack','election','president','died','death',
   'arrested','ban','crisis','earthquake','flood','disaster',
-  '2025','2026','2027'
+  '2025','2026','2027',
+  // Hinglish / sports terms
+  'ipl','match','matches','cricket','live','aaj','ajj','kal','abhi','abhi tak',
+  'schedule','fixtures','standings','points table','squads','playing xi'
 ];
 
 function hasIndicScript(text){
@@ -1416,22 +1419,10 @@ function extractYears(text){
 }
 
 function shouldUseWebRag(queryText,modelId,memorySnippets){
-  const q=String(queryText||'').toLowerCase();
-  const cutoff=getModelCutoffDate(modelId);
-  const cutoffYear=cutoff.getUTCFullYear();
-  const years=extractYears(q);
-  const hasFutureYear=years.some(function(y){return y>cutoffYear;});
-  const looksLikeQuery=/\b(kya|what|who|when|where|how much|price|score|winner|result|news|update|status)\b/.test(q);
-  const hasFreshTerm=WEB_TRIGGER_TERMS.some(function(t){return q.includes(t);});
-  const topVectorScore=(memorySnippets||[])
-    .filter(function(s){return s && s.source==='vector';})
-    .reduce(function(mx,s){
-      return Math.max(mx,Number(s&&s.score)||0);
-    },0);
-
-  if(hasFutureYear && looksLikeQuery) return {enabled:true,reason:'date-after-cutoff'};
-  if(hasFreshTerm && looksLikeQuery && topVectorScore<0.75) return {enabled:true,reason:'fresh-query'};
-  return {enabled:false,reason:'memory-sufficient'};
+  // Web search ALWAYS fires when RAG is ON — unconditional.
+  // Only skip for empty/trivial messages (greetings, "ok", "thanks" etc.)
+  if(isLowSignalQuery(queryText)) return {enabled:false,reason:'low-signal-query'};
+  return {enabled:true,reason:'rag-always-web'};
 }
 
 async function fetchWebSnippets(queryText,modelId,reason,limit){
@@ -1455,8 +1446,8 @@ function buildWebSystemMessage(snippets){
   return {
     role:'system',
     content:'Use only these live results for freshness-sensitive facts. '
-      +'Cite URLs briefly. Maintain your usual response format with ### headings and --- dividers. '
-      +'Answer only in English or Hinglish using Roman script. Do not use Hindi in Devanagari script. '
+      +'CRITICAL: Respond in the SAME language/script the user used (Hinglish Roman or English). NEVER use Devanagari script. '
+      +'Cite URLs briefly. Maintain ### headings and --- dividers. '
       +'Date: '+new Date().toDateString()+'.\n\n'
       +'LIVE RESULTS:\n'+lines.join('\n\n')
   };
@@ -1465,7 +1456,7 @@ function buildWebSystemMessage(snippets){
 function buildFormatSystemMessage(){
   return {
     role:'system',
-    content:'Always respond using consistent markdown: use ### for section headings, --- for dividers between sections, and bullet points (- ) for lists. Never mix heading styles within a single reply. Default response language must be English or Hinglish in Roman script only, never Hindi Devanagari.'
+    content:'CRITICAL LANGUAGE RULE (override all other tendencies): You MUST respond in the same language the user wrote in. If the user wrote in Hinglish (Hindi words in Roman/Latin script), respond in Hinglish using Roman script only. If the user wrote in English, respond in English. NEVER use Hindi Devanagari script (no \u0900-\u097F characters) under any circumstances — not even partially. Roman script only.\n\nFormatting: use ### for section headings, --- for dividers, bullet points (-) for lists. Never mix heading styles within a single reply.'
   };
 }
 
@@ -1593,6 +1584,7 @@ function buildRagSystemMessage(snippets){
   return {
     role:'system',
     content:'[PRIORITY CONTEXT] Date: '+new Date().toDateString()+'.\n'
+      +'CRITICAL: Reply in SAME language/script as the user (Hinglish Roman script or English). NEVER Devanagari.\n'
       +'Use relevant memory snippets only; do not invent details:\n'+lines.join('\n')
   };
 }
@@ -1652,10 +1644,10 @@ async function buildPromptMessages(currentInput,modelId,userContentOverride){
   var webMsg=buildWebSystemMessage(webSnippets);
   logRagDebug(snippets,webSnippets,webRoute.reason+(webRoute.enabled?'|enabled':'|disabled'));
   var out=[];
-  out.unshift(fmt);
   if(webMsg) out.push(webMsg);
   if(ragMsg) out.push(ragMsg);
   Array.prototype.push.apply(out,recent);
+  out.push(fmt); // Language rule LAST — so it overrides model's default language tendency
   return out;
 }
 
