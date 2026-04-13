@@ -1421,7 +1421,7 @@ function shouldUseWebRag(queryText,modelId,memorySnippets){
   const cutoffYear=cutoff.getUTCFullYear();
   const years=extractYears(q);
   const hasFutureYear=years.some(function(y){return y>cutoffYear;});
-  const hasCurrentYear=years.some(function(y){return y>=new Date().getUTCFullYear();});
+  const looksLikeQuery=/\b(kya|what|who|when|where|how much|price|score|winner|result|news|update|status)\b/.test(q);
   const hasFreshTerm=WEB_TRIGGER_TERMS.some(function(t){return q.includes(t);});
   const topVectorScore=(memorySnippets||[])
     .filter(function(s){return s && s.source==='vector';})
@@ -1429,8 +1429,8 @@ function shouldUseWebRag(queryText,modelId,memorySnippets){
       return Math.max(mx,Number(s&&s.score)||0);
     },0);
 
-  if(hasFutureYear || hasCurrentYear) return {enabled:true,reason:'date-after-cutoff'};
-  if(hasFreshTerm && topVectorScore<0.75) return {enabled:true,reason:'fresh-query'};
+  if(hasFutureYear && looksLikeQuery) return {enabled:true,reason:'date-after-cutoff'};
+  if(hasFreshTerm && looksLikeQuery && topVectorScore<0.75) return {enabled:true,reason:'fresh-query'};
   return {enabled:false,reason:'memory-sufficient'};
 }
 
@@ -1455,9 +1455,16 @@ function buildWebSystemMessage(snippets){
   return {
     role:'system',
     content:'Use only these live results for freshness-sensitive facts. '
-      +'Treat them as current and cite URLs briefly. '
+      +'Cite URLs briefly. Maintain your usual response format with ### headings and --- dividers. '
       +'Date: '+new Date().toDateString()+'.\n\n'
       +'LIVE RESULTS:\n'+lines.join('\n\n')
+  };
+}
+
+function buildFormatSystemMessage(){
+  return {
+    role:'system',
+    content:'Always respond using consistent markdown: use ### for section headings, --- for dividers between sections, and bullet points (- ) for lists. Never mix heading styles within a single reply.'
   };
 }
 
@@ -1591,6 +1598,7 @@ function buildRagSystemMessage(snippets){
 
 async function buildPromptMessages(currentInput,modelId,userContentOverride){
   var windowSize=getAdaptiveRecentWindowSize(currentInput);
+  var fmt=buildFormatSystemMessage();
 
   if(!isRagEnabledForActiveChat()){
     lastWebSnippetsUsed=[];
@@ -1600,6 +1608,7 @@ async function buildPromptMessages(currentInput,modelId,userContentOverride){
     if(userContentOverride && onlyRecent.length && onlyRecent[onlyRecent.length-1].role==='user'){
       onlyRecent[onlyRecent.length-1]={role:'user',content:userContentOverride};
     }
+    onlyRecent.unshift(fmt);
     return onlyRecent;
   }
 
@@ -1618,6 +1627,7 @@ async function buildPromptMessages(currentInput,modelId,userContentOverride){
   lastWebSnippetsUsed=webSnippets.slice(0,6);
   var webMsg=buildWebSystemMessage(webSnippets);
   var out=[];
+  out.unshift(fmt);
   if(webMsg) out.push(webMsg);
   if(ragMsg) out.push(ragMsg);
   Array.prototype.push.apply(out,recent);
