@@ -638,6 +638,7 @@ textarea#ti::placeholder{color:var(--textdd)}
     <div class="token-budget" id="tokenBudgetWarn">Budget: --</div>
     <button type="button" id="memScopeBtn" class="mem-pill" onclick="toggleMemoryScope()">Memory: <strong>Current Chat</strong></button>
     <button type="button" id="ragChatBtn" class="mem-pill" onclick="toggleChatRag()">RAG: <strong>ON</strong></button>
+    <button type="button" id="webSearchBtn" class="mem-pill" onclick="toggleWebSearch()">WEB: <strong>ON</strong></button>
   </div>
   <div id="authGate" class="auth-shell">
     <div class="auth-box" id="authBox">
@@ -722,6 +723,7 @@ let activeConversationId=null;
 let convList=[];
 let activeMessagesCache=[];
 let ragScope='current';
+let webSearchEnabled=true;
 let globalStats={total:0,tavily:0,models:{}};
 let chatRagToggles={};
 let newChatRagEnabled=true;
@@ -1223,6 +1225,7 @@ function loadRagSettings(){
 function loadChatRagToggles(){
   try{chatRagToggles=JSON.parse(localStorage.getItem(CHAT_RAG_TOGGLES_KEY)||'{}')||{}}catch(e){chatRagToggles={};}
   renderChatRagToggle();
+  renderWebSearchToggle();
 }
 
 function saveChatRagToggles(){
@@ -1252,7 +1255,31 @@ function toggleChatRag(){
     newChatRagEnabled=now;
   }
   renderChatRagToggle();
+  renderWebSearchToggle();
   toast('RAG for this chat: '+(now?'ON':'OFF'));
+}
+
+function isWebSearchEnabled(){
+  try{
+    var s=localStorage.getItem('nimWebSearchEnabled');
+    if(s===null) return true; // default ON
+    return s==='1';
+  }catch(e){return true;}
+}
+
+function renderWebSearchToggle(){
+  var btn=document.getElementById('webSearchBtn');
+  if(!btn) return;
+  var on=isWebSearchEnabled();
+  btn.innerHTML='WEB: <strong>'+(on?'ON':'OFF')+'</strong>';
+  btn.style.opacity=on?'1':'0.5';
+}
+
+function toggleWebSearch(){
+  var now=!isWebSearchEnabled();
+  try{localStorage.setItem('nimWebSearchEnabled',now?'1':'0');}catch(e){}
+  renderWebSearchToggle();
+  toast('Web search: '+(now?'ON':'OFF'));
 }
 
 function saveRagSettings(){
@@ -1346,6 +1373,7 @@ function applyBootPayload(payload){
     renderConversationSelect();
     setAuthUI();
     renderChatRagToggle();
+  renderWebSearchToggle();
     resetChatUI();
     clearBootCache();
     return;
@@ -1370,6 +1398,7 @@ function applyBootPayload(payload){
 
   setAuthUI();
   renderChatRagToggle();
+  renderWebSearchToggle();
   renderConversationSelect();
   fillChatFromMessages(payload.messages||[]);
   saveBootCache();
@@ -1466,11 +1495,12 @@ function appendSourceCitations(answerText,snippets){
     .filter(function(s){return s && s.url;})
     .slice(0,4)
     .map(function(s,idx){
-      return (idx+1)+'. '+(s.title||s.url)+' - '+s.url;
+      var title=(s.title||s.url).replace(/[\[\]]/g,'');
+      return (idx+1)+'. ['+title+']('+s.url+')';
     });
   if(!list.length) return base;
   if(/\bsources?:/i.test(base)) return base;
-  return base+'\n\nSources:\n'+list.join('\n');
+  return base+'\n\n**Sources:**\n'+list.join('\n');
 }
 
 function isVisionCapableModel(m){
@@ -1635,9 +1665,9 @@ async function buildPromptMessages(currentInput,modelId,userContentOverride){
     recent[recent.length-1]={role:'user',content:userContentOverride};
   }
 
-  var snippets=isLowSignalQuery(currentInput) ? [] : await fetchRagSnippets(currentInput);
+  var snippets=(isRagEnabledForActiveChat() && !isLowSignalQuery(currentInput)) ? await fetchRagSnippets(currentInput) : [];
   var ragMsg=buildRagSystemMessage(snippets);
-  var webRoute=shouldUseWebRag(currentInput,modelId,snippets);
+  var webRoute=isWebSearchEnabled() ? shouldUseWebRag(currentInput,modelId,snippets) : {enabled:false,reason:'web-disabled'};
   var webLimit=getAdaptiveWebLimit(currentInput);
   var webSnippets=webRoute.enabled ? await fetchWebSnippets(currentInput,modelId,webRoute.reason,webLimit) : [];
   lastWebSnippetsUsed=webSnippets.slice(0,6);
@@ -1914,6 +1944,7 @@ async function loadConversation(id,skipHistory){
   var data=await apiJSON('/api/messages?conversation_id='+encodeURIComponent(id));
   fillChatFromMessages(data.messages||[]);
   renderChatRagToggle();
+  renderWebSearchToggle();
   renderConversationSelect();
   saveBootCache();
   if(!skipHistory){
@@ -2858,6 +2889,7 @@ function newChat(skipHistory){
   activeConversationId=null;
   newChatRagEnabled=true;
   renderChatRagToggle();
+  renderWebSearchToggle();
   clearPendingAttachments();
   resetChatUI();
   var csel=document.getElementById('csel');
