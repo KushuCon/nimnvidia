@@ -61,7 +61,9 @@ export async function fetchEmbedding(text) {
   return data.data[0].embedding;
 }
 
-export function splitIntoChunks(text, chunkSize = 500, overlap = 80) {
+export function splitIntoChunks(text, role = 'user') {
+  const chunkSize = role === 'assistant' ? 800 : 400;
+  const overlap = role === 'assistant' ? 150 : 80;
   const clean = normalizeSpaces(text);
   if (!clean) return [];
 
@@ -138,7 +140,7 @@ export async function indexMessageForMemory({ userId, conversationId, messageId,
   if (!text || !messageId || !userId || !conversationId) return;
   if (!['user', 'assistant', 'system'].includes(role)) return;
 
-  const chunks = splitIntoChunks(text);
+  const chunks = splitIntoChunks(text, role);
   if (!chunks.length) return;
 
   await supabaseRest(`memory_chunks?message_id=eq.${messageId}`, { method: 'DELETE' });

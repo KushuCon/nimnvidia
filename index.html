@@ -1596,6 +1596,24 @@ function buildRagSystemMessage(snippets){
   };
 }
 
+function logRagDebug(snippets,webSnippets){
+  if(typeof window==='undefined' || !window.__ragDebug) return;
+  var mem=Array.isArray(snippets) ? snippets : [];
+  var web=Array.isArray(webSnippets) ? webSnippets : [];
+  console.group('[RAG DEBUG]');
+  console.log('Snippets used:', mem.length);
+  mem.forEach(function(s,i){
+    var score=Number(s && s.score);
+    var scoreText=Number.isFinite(score) ? score.toFixed(3) : 'n/a';
+    var src=s && s.source ? s.source : 'unknown';
+    var title=s && s.title ? s.title : 'Chat';
+    var text=s && s.text ? String(s.text).slice(0,80) : '';
+    console.log((i+1)+'. ['+src+'] score:'+scoreText+' | '+title+' | '+text+'...');
+  });
+  console.log('Web snippets:', web.length);
+  console.groupEnd();
+}
+
 async function buildPromptMessages(currentInput,modelId,userContentOverride){
   var windowSize=getAdaptiveRecentWindowSize(currentInput);
   var fmt=buildFormatSystemMessage();
@@ -1608,6 +1626,7 @@ async function buildPromptMessages(currentInput,modelId,userContentOverride){
     if(userContentOverride && onlyRecent.length && onlyRecent[onlyRecent.length-1].role==='user'){
       onlyRecent[onlyRecent.length-1]={role:'user',content:userContentOverride};
     }
+    logRagDebug([],[]);
     onlyRecent.unshift(fmt);
     return onlyRecent;
   }
@@ -1626,6 +1645,7 @@ async function buildPromptMessages(currentInput,modelId,userContentOverride){
   var webSnippets=webRoute.enabled ? await fetchWebSnippets(currentInput,modelId,webRoute.reason,webLimit) : [];
   lastWebSnippetsUsed=webSnippets.slice(0,6);
   var webMsg=buildWebSystemMessage(webSnippets);
+  logRagDebug(snippets,webSnippets);
   var out=[];
   out.unshift(fmt);
   if(webMsg) out.push(webMsg);
