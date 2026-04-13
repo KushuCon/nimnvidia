@@ -279,6 +279,47 @@ select#msel option{background:#0a120a;color:var(--text)}
   font-size:10px;color:var(--textd);line-height:1.6;
   white-space:pre-wrap;word-break:break-word;max-height:300px;overflow-y:auto;
 }
+/* Live reasoning block shown during streaming */
+.think-live{
+  margin:0 0 8px 0;border:1px solid var(--border2);border-radius:var(--r);
+  background:#040804;overflow:hidden;
+}
+.think-live-header{
+  display:flex;align-items:center;gap:6px;
+  padding:5px 9px;border-bottom:1px solid var(--border);
+  font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--g);letter-spacing:.5px;
+}
+.think-live-dot{
+  width:5px;height:5px;border-radius:50%;background:var(--g);
+  animation:pls 1s infinite;flex-shrink:0;
+}
+.think-live-body{
+  padding:7px 10px;font-family:'Share Tech Mono',monospace;
+  font-size:10px;color:var(--textd);line-height:1.6;
+  white-space:pre-wrap;word-break:break-word;max-height:200px;overflow-y:auto;
+}
+/* Message body formatting */
+.bbl .msg-h{
+  font-family:'Orbitron',sans-serif;color:var(--g);letter-spacing:.5px;
+  margin:10px 0 4px;line-height:1.3;
+}
+.bbl h1.msg-h{font-size:14px;}
+.bbl h2.msg-h{font-size:13px;}
+.bbl h3.msg-h{font-size:12px;color:var(--white);}
+.bbl .msg-hr{border:none;border-top:1px solid var(--border2);margin:8px 0;}
+.bbl .msg-ul{
+  padding-left:18px;margin:4px 0;list-style:none;
+}
+.bbl .msg-ul li{
+  position:relative;padding-left:12px;margin:2px 0;line-height:1.6;
+}
+.bbl .msg-ul li::before{
+  content:'▸';position:absolute;left:0;color:var(--g);font-size:9px;top:2px;
+}
+.bbl .msg-ol{
+  padding-left:18px;margin:4px 0;
+}
+.bbl .msg-ol li{margin:2px 0;line-height:1.6;}
 
 .tag{
   border-radius:2px;padding:2px 5px;font-size:9px;letter-spacing:.3px;flex-shrink:0;
@@ -2021,7 +2062,23 @@ function addMsg(role,content,mn,meta){
   }
   var inner=document.createElement('div');
   inner.className='msg-body';
-  inner.innerHTML=fmt(content);
+  // For assistant messages, extract <think> for a collapsed block
+  var rawContent=String(content||'');
+  var thinkMatch=rawContent.match(/<think>([\s\S]*?)<\/think>/i);
+  if(role==='ass' && thinkMatch && thinkMatch[1] && thinkMatch[1].trim()){
+    var det=document.createElement('details');
+    det.className='think-block';
+    var sum=document.createElement('summary');
+    sum.textContent='▸ Reasoning';
+    var tbody=document.createElement('div');
+    tbody.className='think-body';
+    tbody.textContent=thinkMatch[1].trim();
+    det.appendChild(sum);det.appendChild(tbody);
+    inner.appendChild(det);
+  }
+  var fmtDiv=document.createElement('div');
+  fmtDiv.innerHTML=fmt(rawContent);
+  inner.appendChild(fmtDiv);
   renderMathInNode(inner);
   bbl.appendChild(inner);
 
@@ -2111,20 +2168,80 @@ function rebuildMessagesFromHistory(){
 }
 
 function fmt(t){
+  // Escape HTML
   t=t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  t=t.replace(/&lt;think&gt;([\s\S]*?)&lt;\/think&gt;/gi,function(_,inner){
-    var cleaned=String(inner||'').trim();
-    if(!cleaned) return '';
-    return '<details class="think-block"><summary>▸ Reasoning</summary><div class="think-body">'+cleaned+'</div></details>';
-  });
+
+  // Strip/render completed <think> blocks (already handled live in streaming)
+  t=t.replace(/&lt;think&gt;([\s\S]*?)&lt;\/think&gt;/gi,'');
+  // Strip any open/unclosed <think> block
   t=t.replace(/&lt;think&gt;[\s\S]*/i,'');
-  t=t.replace(/```([\s\S]*?)```/g,'<pre><code>$1</code></pre>');
+
+  // Fenced code blocks first (protect from other replacements)
+  var codeBlocks=[];
+  t=t.replace(/```([a-zA-Z]*)\n?([\s\S]*?)```/g,function(_,lang,code){
+    var idx=codeBlocks.length;
+    codeBlocks.push('<pre><code'+(lang?' class="lang-'+lang+'"':'')+'>'+(code||'')+'</code></pre>');
+    return '\x00CODE'+idx+'\x00';
+  });
+
+  // Process line by line for headings, bullets, dividers
+  var lines=t.split('\n');
+  var out=[];
+  var inList=false;
+  for(var i=0;i<lines.length;i++){
+    var line=lines[i];
+    // --- divider
+    if(/^---+\s*$/.test(line.trim())){
+      if(inList){out.push('</ul>');inList=false;}
+      out.push('<hr class="msg-hr">');
+      continue;
+    }
+    // ### Headings
+    var hm=line.match(/^(#{1,3})\s+(.+)$/);
+    if(hm){
+      if(inList){out.push('</ul>');inList=false;}
+      var lvl=hm[1].length;
+      out.push('<h'+lvl+' class="msg-h">'+hm[2]+'</h'+lvl+'>');
+      continue;
+    }
+    // Bullet lists: - or * or •
+    var bm=line.match(/^[\s]*[-•*]\s+(.+)$/);
+    if(bm){
+      if(!inList){out.push('<ul class="msg-ul">');inList=true;}
+      out.push('<li>'+bm[1]+'</li>');
+      continue;
+    }
+    // Numbered list: 1. item
+    var nm=line.match(/^[\s]*(\d+)\.\s+(.+)$/);
+    if(nm){
+      if(inList){out.push('</ul>');inList=false;}
+      // Wrap sequential numbered items in ol — simple: just emit li in ol
+      out.push('<ol start="'+nm[1]+'" class="msg-ol" style="display:contents"><li>'+nm[2]+'</li></ol>');
+      continue;
+    }
+    // Empty line = paragraph break
+    if(!line.trim()){
+      if(inList){out.push('</ul>');inList=false;}
+      out.push('<br>');
+      continue;
+    }
+    if(inList){out.push('</ul>');inList=false;}
+    out.push(line+'<br>');
+  }
+  if(inList) out.push('</ul>');
+  t=out.join('\n');
+
+  // Inline: links, bold, italic, code
   t=t.replace(/`([^`]+)`/g,'<code>$1</code>');
   t=t.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
   t=t.replace(/(^|\s)(https?:\/\/[^\s<]+)/g,'$1<a href="$2" target="_blank" rel="noopener noreferrer">$2</a>');
-  t=t.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
-  t=t.replace(/\*(.*?)\*/g,'<em>$1</em>');
-  t=t.replace(/\n/g,'<br>');
+  t=t.replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>');
+  t=t.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  t=t.replace(/\*(.+?)\*/g,'<em>$1</em>');
+
+  // Restore code blocks
+  t=t.replace(/\x00CODE(\d+)\x00/g,function(_,idx){return codeBlocks[Number(idx)]||'';});
+
   return t;
 }
 
@@ -2316,6 +2433,46 @@ function createSmoothTyper(msgEl){
   };
 }
 
+function createLiveThinkBlock(msgEl){
+  var node=getMessageContentNode(msgEl);
+  if(!node) return null;
+  var block=document.createElement('div');
+  block.className='think-live';
+  block.id='thinkLive_'+Date.now();
+  var header=document.createElement('div');
+  header.className='think-live-header';
+  var dot=document.createElement('div');
+  dot.className='think-live-dot';
+  var lbl=document.createElement('span');
+  lbl.textContent='Reasoning...';
+  header.appendChild(dot);header.appendChild(lbl);
+  var body=document.createElement('div');
+  body.className='think-live-body';
+  block.appendChild(header);block.appendChild(body);
+  node.insertBefore(block,node.firstChild);
+  return {block:block,body:body,header:header,dot:dot,lbl:lbl};
+}
+
+function finalizeLiveThinkBlock(liveObj,thinkContent){
+  if(!liveObj) return;
+  var block=liveObj.block;
+  if(!block) return;
+  if(!thinkContent || !thinkContent.trim()){
+    block.remove();
+    return;
+  }
+  // Convert to a collapsed <details> block
+  var det=document.createElement('details');
+  det.className='think-block';
+  var sum=document.createElement('summary');
+  sum.textContent='▸ Reasoning';
+  var body=document.createElement('div');
+  body.className='think-body';
+  body.textContent=thinkContent.trim();
+  det.appendChild(sum);det.appendChild(body);
+  block.replaceWith(det);
+}
+
 async function readStreamingAssistantReply(res,msgEl){
   if(!res || !res.body || !res.body.getReader) return '';
   var reader=res.body.getReader();
@@ -2324,6 +2481,12 @@ async function readStreamingAssistantReply(res,msgEl){
   var rawText='';
   var typer=createSmoothTyper(msgEl);
   var hadVisible=false;
+
+  // Live reasoning state
+  var inThink=false;
+  var thinkContent='';
+  var visibleContent='';
+  var liveThink=null;
 
   while(true){
     var part=await reader.read();
@@ -2341,10 +2504,49 @@ async function readStreamingAssistantReply(res,msgEl){
         var delta=(parsed && parsed.choices && parsed.choices[0] && parsed.choices[0].delta && parsed.choices[0].delta.content)
           || (parsed && parsed.choices && parsed.choices[0] && parsed.choices[0].message && parsed.choices[0].message.content)
           || '';
+        // Also check reasoning_content (some APIs expose it separately)
+        var reasoningDelta=(parsed && parsed.choices && parsed.choices[0] && parsed.choices[0].delta && parsed.choices[0].delta.reasoning_content) || '';
+        if(reasoningDelta){
+          thinkContent+=reasoningDelta;
+          if(!liveThink) liveThink=createLiveThinkBlock(msgEl);
+          if(liveThink) liveThink.body.textContent=thinkContent;
+          sc();
+        }
         if(delta){
           rawText+=delta;
-          var visible=extractVisibleAssistantText(rawText);
-          if(visible.trim()){
+          // Parse think tags incrementally from rawText
+          // Extract think portion and visible portion
+          var rt=rawText;
+          var tc='';
+          var vc='';
+          // Check if think block is still open
+          var thinkStart=rt.indexOf('<think>');
+          var thinkEnd=rt.indexOf('</think>');
+          if(thinkStart!==-1){
+            if(thinkEnd!==-1){
+              // Think block complete
+              tc=rt.slice(thinkStart+7,thinkEnd);
+              vc=rt.slice(0,thinkStart)+rt.slice(thinkEnd+8);
+              inThink=false;
+            } else {
+              // Still inside think block
+              tc=rt.slice(thinkStart+7);
+              vc=rt.slice(0,thinkStart);
+              inThink=true;
+            }
+          } else {
+            vc=rt;
+            inThink=false;
+          }
+          // Update live reasoning block
+          if(tc && !reasoningDelta){
+            thinkContent=tc;
+            if(!liveThink) liveThink=createLiveThinkBlock(msgEl);
+            if(liveThink) liveThink.body.textContent=thinkContent;
+          }
+          // Update visible content
+          var visible=vc.replace(/<think>[\s\S]*/,'').trim();
+          if(visible){
             hadVisible=true;
             typer.setTarget(visible);
           }
@@ -2354,7 +2556,12 @@ async function readStreamingAssistantReply(res,msgEl){
   }
   if(!hadVisible) typer.setTarget('');
   typer.flush();
-  return sanitizeAssistantOutput(extractVisibleAssistantText(rawText));
+  // Finalize the live think block into a collapsed details
+  finalizeLiveThinkBlock(liveThink, thinkContent);
+  // Build the final clean text (no think tags)
+  var final=rawText;
+  final=final.replace(/<think>[\s\S]*?<\/think>/gi,'').replace(/<think>[\s\S]*/i,'').trim();
+  return sanitizeAssistantOutput(final||rawText);
 }
 
 async function go(){
