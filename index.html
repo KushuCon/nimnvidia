@@ -701,6 +701,7 @@ textarea#ti::placeholder{color:var(--textdd)}
   <div class="kbd-box">
     <div class="kbd-title">KEYBOARD SHORTCUTS</div>
     <div class="kbd-row"><span>New chat</span><span class="kbd-key">Ctrl + /</span></div>
+    <div class="kbd-row"><span>Clear messages</span><span class="kbd-key">Ctrl + Shift + X</span></div>
     <div class="kbd-row"><span>Focus model selector</span><span class="kbd-key">Ctrl + K</span></div>
     <div class="kbd-row"><span>Copy last AI reply</span><span class="kbd-key">Ctrl + Shift + C</span></div>
     <div class="kbd-row"><span>Toggle chat drawer</span><span class="kbd-key">Ctrl + B</span></div>
@@ -1833,7 +1834,13 @@ async function deleteConversation(convo){
 
   var wasActive=convo.id===activeConversationId;
   try{
-    var data=await apiJSON('/api/messages?conversation_id='+encodeURIComponent(convo.id));
+    var data;
+    try{
+      data=await apiJSON('/api/messages?conversation_id='+encodeURIComponent(convo.id));
+    }catch(fetchErr){
+      toast('Could not fetch messages for undo snapshot. Delete cancelled.');
+      return;
+    }
     await apiJSON('/api/conversations',{method:'DELETE',body:{id:convo.id}});
     if(pendingDeleteUndoTimer) clearTimeout(pendingDeleteUndoTimer);
     pendingDeletedConversation={
@@ -2183,6 +2190,18 @@ function addMsg(role,content,mn,meta){
         setMessageFeedback(meta.messageId, meta.feedback==='down' ? null : 'down');
       };
       actions.appendChild(downBtn);
+
+      var cpBtn=document.createElement('button');
+      cpBtn.type='button';
+      cpBtn.className='tbtn';
+      cpBtn.textContent='⧉ Copy';
+      cpBtn.onclick=function(e){
+        e.stopPropagation();
+        var body=d.querySelector('.msg-body');
+        if(body && navigator.clipboard) navigator.clipboard.writeText(body.innerText||'').then(function(){toast('Copied!');}).catch(function(){});
+        else if(body){var ta2=document.createElement('textarea');ta2.value=body.innerText||'';document.body.appendChild(ta2);ta2.select();document.execCommand('copy');ta2.remove();toast('Copied!');}
+      };
+      actions.appendChild(cpBtn);
     }
 
     bbl.appendChild(actions);
@@ -2772,7 +2791,7 @@ async function go(){
         updateStreamBubble(streamEl,reply,{skipTokenEstimate:true});
       }
       if(!reply) reply='(empty)';
-      reply=sanitizeAssistantOutput(reply);
+      // sanitizeAssistantOutput already applied per-path: streaming inside readStreamingAssistantReply, non-streaming above
       reply=appendSourceCitations(reply,lastWebSnippetsUsed);
       updateStreamBubble(streamEl,reply);
       hist.push({role:'assistant',content:reply});
@@ -2784,8 +2803,31 @@ async function go(){
           streamEl.setAttribute('data-message-id',savedAss.id);
           activeMessagesCache[activeMessagesCache.length-1].id=savedAss.id;
           saveBootCache();
+          // Attach feedback + copy buttons now that we have a real message ID
+          var bblEl=streamEl.querySelector('.bbl');
+          if(bblEl && authUser){
+            var liveActions=document.createElement('div');
+            liveActions.className='msg-actions';
+            var liveMsgId=savedAss.id;
+            var liveUpBtn=document.createElement('button');
+            liveUpBtn.type='button';liveUpBtn.className='tbtn';liveUpBtn.textContent='▲ Helpful';
+            liveUpBtn.onclick=function(e){e.stopPropagation();setMessageFeedback(liveMsgId,'up');};
+            var liveDnBtn=document.createElement('button');
+            liveDnBtn.type='button';liveDnBtn.className='tbtn';liveDnBtn.textContent='▼ Not helpful';
+            liveDnBtn.onclick=function(e){e.stopPropagation();setMessageFeedback(liveMsgId,'down');};
+            var liveCpBtn=document.createElement('button');
+            liveCpBtn.type='button';liveCpBtn.className='tbtn';liveCpBtn.textContent='⧉ Copy';
+            liveCpBtn.onclick=function(e){
+              e.stopPropagation();
+              var body=streamEl.querySelector('.msg-body');
+              if(body && navigator.clipboard) navigator.clipboard.writeText(body.innerText||'').then(function(){toast('Copied!');}).catch(function(){});
+              else if(body){var ta2=document.createElement('textarea');ta2.value=body.innerText||'';document.body.appendChild(ta2);ta2.select();document.execCommand('copy');ta2.remove();toast('Copied!');}
+            };
+            liveActions.appendChild(liveUpBtn);liveActions.appendChild(liveDnBtn);liveActions.appendChild(liveCpBtn);
+            bblEl.appendChild(liveActions);
+          }
         }
-      }catch(e){addSys('Warning: assistant message not saved.',true);} 
+      }catch(e){addSys('Warning: assistant message not saved.',true);}
       recCall(m.id).catch(function(){});
       loadConversations(false).catch(function(){});
       clearPendingAttachments();
@@ -3106,6 +3148,10 @@ document.addEventListener('keydown',function(e){
   if(e.ctrlKey && e.key.toLowerCase()==='b'){
     e.preventDefault();
     toggleDrawer();
+  }
+  if(e.ctrlKey && e.shiftKey && e.key.toUpperCase()==='X'){
+    e.preventDefault();
+    clr();
   }
   if(e.ctrlKey && (e.key==='?' || (e.shiftKey && e.key==='/'))){
     e.preventDefault();
