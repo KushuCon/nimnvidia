@@ -929,7 +929,7 @@ const EXTRA_GITHUB_MODELS=[
 ];
 
 const GITHUB_MODEL_IDS=new Set(
-  EXTRA_GITHUB_MODELS.map(function(m){return String(m.id||'').toLowerCase();}).concat(['xai/grok-3-mini'].map(function(id){return String(id).toLowerCase();}))
+  EXTRA_GITHUB_MODELS.map(function(m){return String(m.id||'').toLowerCase();}).concat(['xai/grok-3-mini','xai/grok-3'].map(function(id){return String(id).toLowerCase();}))
 );
 
 Array.prototype.push.apply(MODELS,EXTRA_GITHUB_MODELS);
@@ -1117,7 +1117,6 @@ const MODEL_CUTOFFS={
   'moonshotai/kimi-k2-instruct-0905':'2025-01-01',
   'moonshotai/kimi-k2.5':'2024-04-01',
   'moonshotai/kimi-k2':'2023-02-01',
-  'minimaxai/minimax-m2.7':'2025-01-01',
   'minimaxai/minimax-m2.1':'2025-01-01',
   'stepfun-ai/step-3.5-flash':'2025-01-01',
   'ibm/granite-3.3-8b-instruct':'2024-06-01',
@@ -2766,7 +2765,12 @@ async function go(){
 
   try{
     var promptMsgs=await buildPromptMessages(txt||userDisplayText,m.id,userPayloadContent);
-    var payload={model:m.id,messages:promptMsgs,max_tokens:4096,temperature:0.7,stream:true};
+    // OpenAI o-series and GPT-5.x models reject max_tokens — they require max_completion_tokens.
+    var needsCompletionTokens=/^openai\/(o3|o3-mini|o4-mini|gpt-5|gpt-5\.4|gpt-5\.4-mini|gpt-5\.4-nano)$/i.test(m.id);
+    var payload=Object.assign(
+      {model:m.id,messages:promptMsgs,temperature:0.7,stream:true},
+      needsCompletionTokens ? {max_completion_tokens:4096} : {max_tokens:4096}
+    );
     activeStreamController=new AbortController();
     isStreaming=true;
     setStopButtonVisible(true);
