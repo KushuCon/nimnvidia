@@ -796,6 +796,11 @@ const MODELS=[
    desc:"Google's cutting-edge open multimodal. High-quality reasoning from images, multilingual text.",
    tags:["vision","reasoning"]},
 
+  // ── 31B ──
+  {id:"google/gemma-4-31b-it",name:"Gemma 4 31B IT",params:"31B",pv:31,
+   desc:"Dense 31B model delivering frontier reasoning for coding, agentic workflows, and fine-tuning.",
+   tags:["coding","reasoning"]},
+
   // ── 32B ──
   {id:"qwen/qwq-32b",name:"QwQ 32B",params:"32B",pv:32,
    desc:"Powerful thinking model for hard problems: math olympiad, competitive coding, multi-step logic.",
@@ -844,6 +849,11 @@ const MODELS=[
   {id:"stepfun-ai/step-3.5-flash",name:"Step 3.5 Flash 200B",params:"200B MoE",pv:200,
    desc:"Open-source reasoning engine, sparse MoE, frontier agentic AI for complex multi-step tasks.",
    tags:["reasoning","coding"]},
+
+  // ── 230B ──
+  {id:"minimaxai/minimax-m2.7",name:"MiniMax M2.7",params:"230B",pv:230,
+   desc:"230B-parameter text-to-text AI model excelling in coding, reasoning, and office tasks.",
+   tags:["coding","reasoning"]},
 
   // ── ~456B ──
   {id:"minimaxai/minimax-m2.1",name:"MiniMax M2.1",params:"~456B MoE",pv:456,
@@ -1107,6 +1117,7 @@ const MODEL_CUTOFFS={
   'moonshotai/kimi-k2-instruct-0905':'2025-01-01',
   'moonshotai/kimi-k2.5':'2024-04-01',
   'moonshotai/kimi-k2':'2023-02-01',
+  'minimaxai/minimax-m2.7':'2025-01-01',
   'minimaxai/minimax-m2.1':'2025-01-01',
   'stepfun-ai/step-3.5-flash':'2025-01-01',
   'ibm/granite-3.3-8b-instruct':'2024-06-01',
