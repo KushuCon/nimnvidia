@@ -1254,6 +1254,7 @@ function renderChatRagToggle(){
   if(!btn) return;
   var on=isRagEnabledForActiveChat();
   btn.innerHTML='RAG: <strong>'+(on?'ON':'OFF')+'</strong>';
+  btn.style.opacity=on?'1':'0.5';
 }
 
 function toggleChatRag(){
@@ -2710,6 +2711,7 @@ async function go(){
     addSys('Selected model does not support vision input. Choose a vision-capable model for image upload.',true);
     return;
   }
+  var hadConversationOnSend=!!activeConversationId;
   try{await ensureConversation();}
   catch(e){
     addSys('Could not create chat session: '+e.message,true);
@@ -2763,6 +2765,9 @@ async function go(){
     if(savedUser && savedUser.id){
       userMsgEl.setAttribute('data-message-id',savedUser.id);
       activeMessagesCache[activeMessagesCache.length-1].id=savedUser.id;
+      if(!hadConversationOnSend && activeConversationId){
+        history.replaceState({convId:activeConversationId},'','/?c='+encodeURIComponent(activeConversationId));
+      }
       saveBootCache();
     }
   }catch(e){addSys('Warning: user message not saved.',true);} 
