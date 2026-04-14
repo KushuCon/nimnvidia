@@ -2412,11 +2412,16 @@ function addSys(txt,err){
 }
 
 async function setMessageFeedback(messageId,feedback){
-  if(!authUser || !messageId) return;
+  if(!authUser || !messageId || !activeConversationId) return;
   try{
     await apiJSON('/api/messages',{
       method:'PATCH',
-      body:{action:'feedback',id:messageId,feedback:feedback||null}
+      body:{
+        action:'feedback',
+        conversation_id:activeConversationId,
+        message_id:messageId,
+        feedback:feedback||null
+      }
     });
     await loadConversation(activeConversationId);
   }catch(e){
