@@ -43,6 +43,7 @@ export async function fetchEmbedding(text) {
       model: getEmbeddingModel(),
       input: [input],
       encoding_format: 'float',
+      input_type: 'query',
     }),
   });
 

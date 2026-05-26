@@ -170,19 +170,17 @@ export default async function handler(req, res) {
         });
       }
 
-      try {
+      
         if (message && message.id) {
-          await indexMessageForMemory({
-            userId: session.user_id,
-            conversationId,
-            messageId: message.id,
-            role,
-            content,
-          });
-          await maybeCreateSummarySnapshot({ userId: session.user_id, conversationId });
-        }
-      } catch {
-        // Memory indexing is best-effort.
+        indexMessageForMemory({
+          userId: session.user_id,
+          conversationId,
+          messageId: message.id,
+          role,
+          content,
+        }).catch(() => {}).then(() =>
+          maybeCreateSummarySnapshot({ userId: session.user_id, conversationId }).catch(() => {})
+        );
       }
 
       return res.status(200).json({ message });

@@ -1,6 +1,3 @@
-
-// Vercel Serverless Function — /api/chat
-// Routes chat requests to the right upstream provider by model id.
 const GITHUB_CHAT_MODEL_IDS = new Set([
   'xai/grok-3-mini',
   'xai/grok-3',
@@ -34,7 +31,7 @@ const GITHUB_CHAT_MODEL_IDS = new Set([
   'cohere/cohere-command-a',
   'mistral-ai/codestral-2501',
   'mistral-ai/ministral-3b',
-  'ai21/jamba-1.5-large'
+  'ai21/jamba-1.5-large',
 ]);
 
 const OPENROUTER_MODEL_IDS = new Set([
@@ -52,8 +49,6 @@ const OPENROUTER_MODEL_IDS = new Set([
   'qwen/qwen3-coder:free',
 ]);
 
-// OpenAI reasoning/GPT-5 models require max_completion_tokens instead of max_tokens.
-// Sending max_tokens to these models causes a 400 error.
 const OPENAI_COMPLETION_TOKENS_MODELS = new Set([
   'openai/o3',
   'openai/o3-mini',
@@ -73,35 +68,22 @@ export default async function handler(req, res) {
     const payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const modelId = String((payload && payload.model) || '');
     const modelKey = modelId.toLowerCase();
+
     const useGithubModels = GITHUB_CHAT_MODEL_IDS.has(modelKey);
-const useOpenRouter = OPENROUTER_MODEL_IDS.has(modelKey);
+    const useOpenRouter = OPENROUTER_MODEL_IDS.has(modelKey);
 
-if (useOpenRouter) {
-  headers['HTTP-Referer'] = 'https://nimchat.vercel.app'; // apni site ka URL
-  headers['X-Title'] = 'NIM Chat';
-}
+    const endpoint = useGithubModels
+      ? 'https://models.github.ai/inference/chat/completions'
+      : useOpenRouter
+        ? 'https://openrouter.ai/api/v1/chat/completions'
+        : 'https://integrate.api.nvidia.com/v1/chat/completions';
 
+    const apiKey = useGithubModels
+      ? process.env.GITHUB_API_MODEL_KEY
+      : useOpenRouter
+        ? process.env.OPENROUTER_API_KEY
+        : process.env.NVIDIA_API_KEY;
 
-const endpoint = useGithubModels
-  ? 'https://models.github.ai/inference/chat/completions'
-  : useOpenRouter
-    ? 'https://openrouter.ai/api/v1/chat/completions'
-    : 'https://integrate.api.nvidia.com/v1/chat/completions';
-
-const apiKey = useGithubModels
-  ? process.env.GITHUB_API_MODEL_KEY
-  : useOpenRouter
-    ? process.env.OPENROUTER_API_KEY
-    : process.env.NVIDIA_API_KEY;
-
-    const headers = {
-  'Content-Type': 'application/json',
-  'Authorization': 'Bearer ' + apiKey,
-};
-if (useOpenRouter) {
-  headers['HTTP-Referer'] = 'https://nimchat.vercel.app';
-  headers['X-Title'] = 'NIM Chat';
-}
     if (!apiKey) {
       return res.status(500).json({
         error: useGithubModels
@@ -112,7 +94,15 @@ if (useOpenRouter) {
       });
     }
 
-    // Rewrite max_tokens -> max_completion_tokens for OpenAI models that require it.
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + apiKey,
+    };
+    if (useOpenRouter) {
+      headers['HTTP-Referer'] = 'https://nimchat.vercel.app';
+      headers['X-Title'] = 'NIM Chat';
+    }
+
     let outPayload = payload;
     if (OPENAI_COMPLETION_TOKENS_MODELS.has(modelKey) && outPayload && outPayload.max_tokens != null) {
       const { max_tokens, ...rest } = outPayload;
