@@ -115,11 +115,15 @@ body.loading::after{z-index:9988}
 }
 .chat-toggle:active{border-color:var(--g2);color:var(--g)}
 
+.new-chat-top{background:none;border:1px solid var(--g);color:var(--g);border-radius:4px;padding:4px 10px;font-size:15px;cursor:pointer;flex-shrink:0;display:none}
+.new-chat-top:hover{background:var(--g);color:#000}
+
 .logout-top{
   display:none;align-items:center;justify-content:center;
   background:transparent;border:1px solid #5a1a1a;color:#cc6666;
   font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.8px;
   padding:7px 10px;border-radius:var(--r);cursor:pointer;white-space:nowrap;
+  
 }
 .logout-top:active{border-color:#aa4444;color:#ff8888}
 
@@ -627,6 +631,7 @@ textarea#ti::placeholder{color:var(--textdd)}
     <span class="sdiv">|</span>
     <span class="slbl">WEB:</span><span class="sval" id="sW">0</span>
   </div>
+  <button class="new-chat-top" type="button" id="newChatBtnTop" onclick="newChat()" title="New Chat">✏</button>
   <button class="logout-top" type="button" id="logoutBtnTop" onclick="authLogout()">LOGOUT</button>
 </div>
 
@@ -746,149 +751,54 @@ let favoriteModelIds=[];
 // ══════════════════════════════════════════
 // MODELS — sorted ascending by param size
 // ══════════════════════════════════════════
-const MODELS=[
   // ── ~2B ──
-  {id:"google/gemma-3n-e2b-it",name:"Gemma 3N E2B",params:"~2B eff.",pv:2,
-   desc:"Ultra-lightweight Google edge AI. Accepts text + audio + image. Resource-constrained devices.",
-   tags:["vision","audio","reasoning"]},
-
-  // ── ~3-4B ──
-  {id:"microsoft/phi-4-mini-flash-reasoning",name:"Phi-4 Mini Flash",params:"~3.8B",pv:3.8,
-   desc:"Microsoft's lightweight reasoning model: math, logic, code. Designed for low-latency edge devices.",
-   tags:["reasoning","math","coding"]},
+  const MODELS=[
+  // ── NVIDIA ──
   {id:"google/gemma-3n-e4b-it",name:"Gemma 3N E4B",params:"~4B eff.",pv:4,
-   desc:"Google edge AI: text + audio + image input. Stronger than E2B while staying lightweight.",
-   tags:["vision","audio","reasoning"]},
-
-  // ── ~5B ──
-  {id:"microsoft/phi-4-multimodal-instruct",name:"Phi-4 Multimodal",params:"~5B",pv:5,
-   desc:"Microsoft open multimodal: high-quality reasoning from BOTH images and audio. Edge-capable.",
-   tags:["vision","audio","reasoning"]},
-
-  // ── 8B ──
-  {id:"ibm/granite-3.3-8b-instruct",name:"Granite 3.3 8B",params:"8B",pv:8,
-   desc:"IBM compact LM: reasoning, coding, instruction-following for enterprise. Efficient and reliable.",
-   tags:["coding","reasoning"]},
-  {id:"Marin/marin-8b-instruct",name:"Marin 8B",params:"8B",pv:8,
-   desc:"Open model trained on open datasets. Strong reasoning, math, science. Fully transparent.",
-   tags:["reasoning","math"]},
-
-  // ── 11-12B ──
-  {id:"Speakleash/bielik-11b-v2.6-instruct",name:"Bielik 11B (Polish)",params:"11B",pv:11,
-   desc:"State-of-the-art Polish language model. Text generation, Q&A, chatbots in Polish language.",
-   tags:["reasoning"]},
-
-  // ── 17B×16 MoE ──
-  {id:"meta/llama-4-scout-17b-16e-instruct",name:"Llama 4 Scout 17B×16E",params:"17B×16 MoE",pv:17*16,
-   desc:"Meta's multimodal, multilingual 16-expert MoE. Fast and efficient for diverse tasks.",
-   tags:["vision","reasoning"]},
-
-  // ── 24B ──
-  {id:"mistralai/magistral-small-2506",name:"Magistral Small 2506",params:"~24B",pv:24,
-   desc:"High-performance reasoning model optimized for efficiency and edge deployment. Coding + math.",
-   tags:["reasoning","coding","math"]},
-  {id:"mistralai/mistral-small-3.1-24b-instruct-2503",name:"Mistral Small 3.1 24B",params:"24B",pv:24,
-   desc:"Efficient multimodal — multilingual, image understanding, fast responses for diverse tasks.",
-   tags:["vision","reasoning"]},
-
-  // ── 27B ──
-  {id:"google/gemma-3-27b-it",name:"Gemma 3 27B",params:"27B",pv:27,
-   desc:"Google's cutting-edge open multimodal. High-quality reasoning from images, multilingual text.",
-   tags:["vision","reasoning"]},
-
-  // ── 31B ──
-  {id:"google/gemma-4-31b-it",name:"Gemma 4 31B IT",params:"31B",pv:31,
-   desc:"Dense 31B model delivering frontier reasoning for coding, agentic workflows, and fine-tuning.",
-   tags:["coding","reasoning"]},
-
-  // ── 32B ──
-  {id:"qwen/qwq-32b",name:"QwQ 32B",params:"32B",pv:32,
-   desc:"Powerful thinking model for hard problems: math olympiad, competitive coding, multi-step logic.",
-   tags:["reasoning","math","coding"]},
-
-  // ── 36B ──
+   desc:"Google edge AI: text + audio + image. Stronger than E2B.",tags:["vision","audio","reasoning"]},
   {id:"bytedance/seed-oss-36b-instruct",name:"Seed OSS 36B",params:"36B",pv:36,
-   desc:"ByteDance open LLM with long-context understanding, reasoning, and agentic intelligence.",
-   tags:["reasoning","coding"]},
-
-  // ── ~70B ──
-  {id:"z-ai/glm-4.7",name:"GLM-4.7",params:"~70B",pv:70,
-   desc:"Multilingual agentic coding partner by Z.ai. Stronger reasoning, tool use, UI agent skills.",
-   tags:["coding","reasoning"]},
-  {id:"xai/grok-3-mini",name:"Grok 3 Mini",params:"Mini",pv:71,
-   desc:"Open reasoning model with 'thinking' mode. 256K context, INT4 quantization, enhanced tool use.",
-   tags:["reasoning","coding","math"]},
-
-  // ── 17B×128 MoE ──
-  {id:"meta/llama-4-maverick-17b-128e-instruct",name:"Llama 4 Maverick 17B×128E",params:"17B×128 MoE",pv:17*128,
-   desc:"Meta's powerful multimodal, multilingual 128-expert MoE. Vision + language at scale.",
-   tags:["vision","reasoning"]},
-
-  // ── 120B MoE ──
+   desc:"ByteDance open LLM: long-context, reasoning, agentic.",tags:["reasoning","coding"]},
+  {id:"meta/llama-4-maverick-17b-128e-instruct",name:"Llama 4 Maverick 17B×128E",params:"17B×128 MoE",pv:2176,
+   desc:"Meta powerful multimodal multilingual 128-expert MoE.",tags:["vision","reasoning"]},
   {id:"nvidia/nemotron-3-super-120b-a12b",name:"Nemotron 3 Super 120B",params:"120B MoE (12B active)",pv:120,
-   desc:"Hybrid Mamba-Transformer MoE. 1M token context. Agentic reasoning, coding, planning, tool calling.",
-   tags:["reasoning","coding","math"]},
-  {id:"mistralai/mistral-nemotron",name:"Mistral Nemotron ~120B",params:"~120B MoE",pv:120,
-   desc:"Built for agentic workflows: coding, instruction following, function calling, tool use.",
-   tags:["coding","reasoning"]},
-
-  // ── 122B MoE ──
+   desc:"Hybrid Mamba-Transformer. 1M context. Agentic reasoning.",tags:["reasoning","coding","math"]},
   {id:"qwen/qwen3.5-122b-a10b",name:"Qwen 3.5 122B",params:"122B MoE (10B active)",pv:122,
-   desc:"MoE LLM for coding, reasoning, multimodal chat. Agent-ready with tool calling support.",
-   tags:["reasoning","coding"]},
-
-  // ── 123B ──
+   desc:"MoE LLM: coding, reasoning, agent-ready.",tags:["reasoning","coding"]},
   {id:"mistralai/devstral-2-123b-instruct-2512",name:"Devstral 2 123B",params:"123B MoE",pv:123,
-   desc:"State-of-the-art open code model. Deep reasoning, 256K context, top coding benchmarks.",
-   tags:["coding","reasoning","math"]},
-  {id:"mistralai/mistral-medium-3-instruct",name:"Mistral Medium 3",params:"~123B",pv:123,
-   desc:"Powerful multimodal for enterprise: software dev, data analysis, complex reasoning tasks.",
-   tags:["vision","reasoning","coding"]},
-
-  // ── ~200B ──
-  {id:"stepfun-ai/step-3.5-flash",name:"Step 3.5 Flash 200B",params:"200B MoE",pv:200,
-   desc:"Open-source reasoning engine, sparse MoE, frontier agentic AI for complex multi-step tasks.",
-   tags:["reasoning","coding"]},
-
-  // ── 230B ──
+   desc:"SOTA open code model. Deep reasoning, 256K context.",tags:["coding","reasoning","math"]},
   {id:"minimaxai/minimax-m2.7",name:"MiniMax M2.7",params:"230B",pv:230,
-   desc:"230B-parameter text-to-text AI model excelling in coding, reasoning, and office tasks.",
-   tags:["coding","reasoning"]},
-
-  // ── ~456B ──
-  {id:"minimaxai/minimax-m2.1",name:"MiniMax M2.1",params:"~456B MoE",pv:456,
-   desc:"Multi-language coding, app/web dev, office AI tasks, seamless agent integration.",
-   tags:["coding","reasoning"]},
-
-  // ── ~480B MoE ──
+   desc:"230B model: coding, reasoning, office tasks.",tags:["coding","reasoning"]},
   {id:"qwen/qwen3-coder-480b-a35b-instruct",name:"Qwen3 Coder 480B",params:"480B MoE (35B active)",pv:480,
-   desc:"Best-in-class agentic coding, browser use, 256K context. Top-ranked on coding + reasoning.",
-   tags:["coding","reasoning","math"]},
-
-  // ── ~675B MoE ──
+   desc:"Best-in-class agentic coding, 256K context.",tags:["coding","reasoning","math"]},
   {id:"mistralai/mistral-large-3-675b-instruct-2512",name:"Mistral Large 3 675B",params:"675B MoE",pv:675,
-   desc:"Top-tier general purpose VLM: chat, agentic, instruction following, multimodal at scale.",
-   tags:["vision","reasoning","coding"]},
-  {id:"deepseek-ai/deepseek-v3.1",name:"DeepSeek V3.1",params:"685B MoE",pv:685,
-   desc:"Fast hybrid reasoning, 128K context, strong tool use and function calling. Agentic tasks.",
-   tags:["reasoning","coding"]},
-  {id:"deepseek-ai/deepseek-v3.1-terminus",name:"DeepSeek V3.1 Terminus",params:"685B MoE",pv:685,
-   desc:"Think/Non-Think modes, stronger agents, 128K context, strict function calling support.",
-   tags:["reasoning","coding"]},
-  {id:"deepseek-ai/deepseek-v3.2",name:"DeepSeek V3.2",params:"685B MoE",pv:685,
-   desc:"SOTA reasoning LLM: sparse attention, very long context, integrated agentic tools.",
-   tags:["reasoning","coding","math"]},
+   desc:"Top-tier VLM: chat, agentic, multimodal at scale.",tags:["vision","reasoning","coding"]},
 
-  // ── ~1T MoE ──
-  {id:"moonshotai/kimi-k2-thinking",name:"Kimi K2 Thinking ~1T",params:"~1T MoE",pv:1000,
-   desc:"Open reasoning model with 'thinking' mode. 256K context, INT4 quantization, enhanced tool use.",
-   tags:["reasoning","coding","math"]},
-  {id:"moonshotai/kimi-k2-instruct",name:"Kimi K2 Instruct ~1T",params:"~1T MoE",pv:1000,
-   desc:"SOTA open MoE model. Best-in-class reasoning, coding, and agentic capabilities.",
-   tags:["coding","reasoning"]},
-  {id:"moonshotai/kimi-k2-instruct-0905",name:"Kimi K2 Instruct 0905 ~1T",params:"~1T MoE",pv:1000,
-   desc:"Updated Kimi K2: extended context window, enhanced reasoning and tool calling performance.",
-   tags:["reasoning","coding"]},
+  // ── OpenRouter free ──
+  {id:"nvidia/nemotron-3-super-120b-a12b:free",name:"Nemotron Super 120B (free)",params:"120B",pv:120,
+   desc:"NVIDIA Nemotron via OpenRouter — free tier.",tags:["reasoning","coding"]},
+  {id:"openai/gpt-oss-120b:free",name:"GPT OSS 120B (free)",params:"120B",pv:120,
+   desc:"OpenAI OSS 120B via OpenRouter — free tier.",tags:["reasoning","coding"]},
+  {id:"z-ai/glm-4.5-air:free",name:"GLM-4.5 Air (free)",params:"Air",pv:35,
+   desc:"Z.ai GLM-4.5 Air via OpenRouter — free tier.",tags:["reasoning"]},
+  {id:"deepseek/deepseek-v4-flash:free",name:"DeepSeek V4 Flash (free)",params:"Flash",pv:40,
+   desc:"DeepSeek V4 Flash via OpenRouter — free tier.",tags:["reasoning","coding"]},
+  {id:"nvidia/nemotron-3-nano-30b-a3b:free",name:"Nemotron Nano 30B (free)",params:"30B",pv:30,
+   desc:"NVIDIA Nemotron Nano via OpenRouter — free tier.",tags:["reasoning"]},
+  {id:"openai/gpt-oss-20b:free",name:"GPT OSS 20B (free)",params:"20B",pv:20,
+   desc:"OpenAI OSS 20B via OpenRouter — free tier.",tags:["reasoning"]},
+  {id:"minimax/minimax-m2.5:free",name:"MiniMax M2.5 (free)",params:"M2.5",pv:50,
+   desc:"MiniMax M2.5 via OpenRouter — free tier.",tags:["reasoning","coding"]},
+  {id:"google/gemma-4-31b-it:free",name:"Gemma 4 31B (free)",params:"31B",pv:31,
+   desc:"Google Gemma 4 31B via OpenRouter — free tier.",tags:["reasoning"]},
+  {id:"google/gemma-4-26b-a4b-it:free",name:"Gemma 4 26B MoE (free)",params:"26B MoE",pv:26,
+   desc:"Google Gemma 4 26B MoE via OpenRouter — free tier.",tags:["reasoning"]},
+  {id:"qwen/qwen3-next-80b-a3b-instruct:free",name:"Qwen3 Next 80B (free)",params:"80B",pv:80,
+   desc:"Qwen3 Next 80B via OpenRouter — free tier.",tags:["reasoning","coding"]},
+  {id:"meta-llama/llama-3.3-70b-instruct:free",name:"Llama 3.3 70B (free)",params:"70B",pv:70,
+   desc:"Meta Llama 3.3 70B via OpenRouter — free tier.",tags:["reasoning"]},
+  {id:"qwen/qwen3-coder:free",name:"Qwen3 Coder (free)",params:"Coder",pv:72,
+   desc:"Qwen3 Coder via OpenRouter — free tier.",tags:["coding","reasoning"]},
+
 ];
 
 const EXTRA_GITHUB_MODELS=[
@@ -1060,7 +970,7 @@ function isLikelyChatModel(m){
   return hasChatTag && isChatCapableModel(m);
 }
 
-const preferredDefaultModelId='moonshotai/kimi-k2-thinking';
+const preferredDefaultModelId='minimaxai/minimax-m2.7';
 const preferredDefaultModelIndex=MODELS.findIndex(function(m){
   return m.id===preferredDefaultModelId && isChatCapableModel(m);
 });
@@ -1208,10 +1118,12 @@ function setAuthUI(){
   var sbtn=document.getElementById('sbtn');
   var chatToggle=document.getElementById('chatToggle');
   var drawerSub=document.getElementById('drawerSub');
+  var newChatBtnTop = document.getElementById('newChatBtnTop');
 
   if(userIn) userIn.disabled=logged;
   if(passIn) passIn.disabled=logged;
   if(logoutBtnTop) logoutBtnTop.style.display=logged?'inline-flex':'none';
+  if(newChatBtnTop) newChatBtnTop.style.display = logged ? 'inline-flex' : 'none';
   if(ta) ta.disabled=!logged;
   if(sbtn) sbtn.disabled=!logged;
   if(chatToggle) chatToggle.style.display=logged?'inline-flex':'none';
@@ -1430,7 +1342,7 @@ async function fetchRagSnippets(queryText){
         query:queryText,
         conversation_id:activeConversationId,
         scope:ragScope,
-        limit:6
+        limit:8
       }
     });
     return data.snippets||[];

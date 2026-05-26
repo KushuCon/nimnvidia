@@ -187,7 +187,7 @@ async function searchTavily(query, limit) {
       include_answer: false,
       include_images: false,
       include_raw_content: false,
-      max_results: Math.max(4, Math.min(limit * 2, 8)),
+      max_results: Math.max(6, Math.min(limit * 2, 12)),
     }),
   });
 
@@ -244,7 +244,7 @@ export default async function handler(req, res) {
 
     const payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
     const query = String(payload.query || '').trim();
-    const limit = Math.max(1, Math.min(Number(payload.limit || 4), 8));
+    const limit = Math.max(1, Math.min(Number(payload.limit || 6), 12));
 
     if (!query) return res.status(200).json({ snippets: [] });
 
@@ -268,7 +268,6 @@ export default async function handler(req, res) {
       } catch {
         // ignore source failures and continue with others
       }
-      if (snippets.length >= limit) break;
     }
 
     return res.status(200).json({ snippets: diversifySnippets(snippets, limit) });

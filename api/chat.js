@@ -37,6 +37,21 @@ const GITHUB_CHAT_MODEL_IDS = new Set([
   'ai21/jamba-1.5-large'
 ]);
 
+const OPENROUTER_MODEL_IDS = new Set([
+  'nvidia/nemotron-3-super-120b-a12b:free',
+  'openai/gpt-oss-120b:free',
+  'z-ai/glm-4.5-air:free',
+  'deepseek/deepseek-v4-flash:free',
+  'nvidia/nemotron-3-nano-30b-a3b:free',
+  'openai/gpt-oss-20b:free',
+  'minimax/minimax-m2.5:free',
+  'google/gemma-4-31b-it:free',
+  'google/gemma-4-26b-a4b-it:free',
+  'qwen/qwen3-next-80b-a3b-instruct:free',
+  'meta-llama/llama-3.3-70b-instruct:free',
+  'qwen/qwen3-coder:free',
+]);
+
 // OpenAI reasoning/GPT-5 models require max_completion_tokens instead of max_tokens.
 // Sending max_tokens to these models causes a 400 error.
 const OPENAI_COMPLETION_TOKENS_MODELS = new Set([
@@ -59,20 +74,41 @@ export default async function handler(req, res) {
     const modelId = String((payload && payload.model) || '');
     const modelKey = modelId.toLowerCase();
     const useGithubModels = GITHUB_CHAT_MODEL_IDS.has(modelKey);
+const useOpenRouter = OPENROUTER_MODEL_IDS.has(modelKey);
 
-    const endpoint = useGithubModels
-      ? (process.env.GITHUB_API_ENDPOINT || 'https://models.github.ai/inference').replace(/\/$/, '') + '/chat/completions'
-      : 'https://integrate.api.nvidia.com/v1/chat/completions';
+if (useOpenRouter) {
+  headers['HTTP-Referer'] = 'https://nimchat.vercel.app'; // apni site ka URL
+  headers['X-Title'] = 'NIM Chat';
+}
 
-    const apiKey = useGithubModels
-      ? process.env.GITHUB_API_MODEL_KEY
-      : process.env.NVIDIA_API_KEY;
 
+const endpoint = useGithubModels
+  ? 'https://models.github.ai/inference/chat/completions'
+  : useOpenRouter
+    ? 'https://openrouter.ai/api/v1/chat/completions'
+    : 'https://integrate.api.nvidia.com/v1/chat/completions';
+
+const apiKey = useGithubModels
+  ? process.env.GITHUB_API_MODEL_KEY
+  : useOpenRouter
+    ? process.env.OPENROUTER_API_KEY
+    : process.env.NVIDIA_API_KEY;
+
+    const headers = {
+  'Content-Type': 'application/json',
+  'Authorization': 'Bearer ' + apiKey,
+};
+if (useOpenRouter) {
+  headers['HTTP-Referer'] = 'https://nimchat.vercel.app';
+  headers['X-Title'] = 'NIM Chat';
+}
     if (!apiKey) {
       return res.status(500).json({
         error: useGithubModels
-          ? 'GITHUB_API_MODEL_KEY not set in environment variables'
-          : 'NVIDIA_API_KEY not set in environment variables',
+          ? 'GITHUB_API_MODEL_KEY not set'
+          : useOpenRouter
+            ? 'OPENROUTER_API_KEY not set'
+            : 'NVIDIA_API_KEY not set',
       });
     }
 
@@ -85,10 +121,7 @@ export default async function handler(req, res) {
 
     const response = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + apiKey,
-      },
+      headers,
       body: JSON.stringify(outPayload),
     });
 
