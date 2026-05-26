@@ -748,10 +748,6 @@ let speechBaseInput='';
 let speechFinalBuffer='';
 let favoriteModelIds=[];
 
-// ══════════════════════════════════════════
-// MODELS — sorted ascending by param size
-// ══════════════════════════════════════════
-  // ── ~2B ──
   const MODELS=[
   // ── NVIDIA ──
   {id:"google/gemma-3n-e4b-it",name:"Gemma 3N E4B",params:"~4B eff.",pv:4,
@@ -774,9 +770,9 @@ let favoriteModelIds=[];
    desc:"Top-tier VLM: chat, agentic, multimodal at scale.",tags:["vision","reasoning","coding"]},
 
   // ── OpenRouter free ──
-  {id:"nvidia/nemotron-3-super-120b-a12b:free",name:"Nemotron Super 120B (free)",params:"120B",pv:120,
+  {id:"nvidia/nemotron-3-super-120b-a12b:free",name:"Nemotron Super 120B (free)",params:"120B",pv:121,
    desc:"NVIDIA Nemotron via OpenRouter — free tier.",tags:["reasoning","coding"]},
-  {id:"openai/gpt-oss-120b:free",name:"GPT OSS 120B (free)",params:"120B",pv:120,
+  {id:"openai/gpt-oss-120b:free",name:"GPT OSS 120B (free)",params:"120B",pv:119,
    desc:"OpenAI OSS 120B via OpenRouter — free tier.",tags:["reasoning","coding"]},
   {id:"z-ai/glm-4.5-air:free",name:"GLM-4.5 Air (free)",params:"Air",pv:35,
    desc:"Z.ai GLM-4.5 Air via OpenRouter — free tier.",tags:["reasoning"]},
@@ -879,6 +875,7 @@ function modelUploadCapabilityLabel(m){
 function modelProviderLabel(m){
   var id=String((m && m.id) || '').toLowerCase();
   if(GITHUB_MODEL_IDS.has(id)) return 'GitHub';
+  if(id.includes(':free')) return 'OpenRouter';
   return 'NVIDIA';
 }
 
