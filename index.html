@@ -1061,12 +1061,9 @@ function getAdaptiveRecentWindowSize(text){
 }
 
 function getAdaptiveWebLimit(queryText){
-  var q=String(queryText||'').trim();
-  var sentenceCount=(q.match(/[.!?]+/g)||[]).length || (q ? 1 : 0);
-  if(q.length<=120 && sentenceCount<=1) return 2;
-  if(q.length<=220) return 3;
-  return 4;
+  return 8;
 }
+
 
 if(typeof window!=='undefined' && window.pdfjsLib && window.pdfjsLib.GlobalWorkerOptions){
   window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
@@ -1395,11 +1392,11 @@ function buildWebSystemMessage(snippets){
   });
   return {
     role:'system',
-    content:'Use only these live results for freshness-sensitive facts. '
-      +'CRITICAL: Respond in the SAME language/script the user used (Hinglish Roman or English). NEVER use Devanagari script. '
-      +'Cite URLs briefly. Maintain ### headings and --- dividers. '
-      +'Date: '+new Date().toDateString()+'.\n\n'
-      +'LIVE RESULTS:\n'+lines.join('\n\n')
+    content:'TODAY IS '+new Date().toDateString()+'. You have access to LIVE web search results below. '
+      +'You MUST use this data to answer — do NOT say you lack internet access or real-time data. '
+      +'These results ARE real-time. Summarize them directly and cite the URLs. '
+      +'CRITICAL: Reply in the SAME language the user used. If Hinglish Roman script, use Roman only, NEVER Devanagari.\n\n'
+      +'LIVE WEB RESULTS:\n'+lines.join('\n\n---\n\n')
   };
 }
 
@@ -2496,16 +2493,19 @@ function finalizeLiveThinkBlock(liveObj,thinkContent){
     block.remove();
     return;
   }
-  // Convert to a collapsed <details> block
+  // Convert to collapsed <details> — open by default then auto-close
   var det=document.createElement('details');
   det.className='think-block';
+  det.open=true; // visible during streaming
   var sum=document.createElement('summary');
-  sum.textContent='▸ Reasoning';
+  sum.textContent='▸ Reasoning (click to expand)';
   var body=document.createElement('div');
   body.className='think-body';
   body.textContent=thinkContent.trim();
   det.appendChild(sum);det.appendChild(body);
   block.replaceWith(det);
+  // Auto-collapse after 2 seconds
+  setTimeout(function(){ det.open=false; }, 2000);
 }
 
 async function readStreamingAssistantReply(res,msgEl){
